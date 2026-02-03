@@ -1,4 +1,4 @@
-# Turkish News Classification with Multi-Representation Analysis
+# NLP ile Türkçe Haber Metni Sınıflandırma
 
 Bu proje, Türkçe haber metinlerini **Ekonomi, Spor ve Teknoloji** kategorilerine ayırmak için geliştirilmiş, geleneksel ve modern Doğal Dil İşleme (NLP) tekniklerini kıyaslayan bir uçtan uca sınıflandırma sistemidir.
 
