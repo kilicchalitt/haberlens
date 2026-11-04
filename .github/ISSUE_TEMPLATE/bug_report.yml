@@ -1,0 +1,35 @@
+name: 🐞 Hata bildirimi
+description: Beklenmeyen bir davranış veya hata bildirin
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Hatanın açıklaması
+      description: Ne oldu, ne olmasını bekliyordunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Yeniden üretme adımları
+      placeholder: |
+        1. `haberlens predict "..."` komutunu çalıştır
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: HaberLens sürümü
+      placeholder: "haberlens --version çıktısı"
+  - type: input
+    id: environment
+    attributes:
+      label: Ortam
+      placeholder: "Python 3.12, Ubuntu 24.04 / Docker"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Hata çıktısı
+      render: shell

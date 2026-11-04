@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HaberLens · Türkçe Haber Sınıflandırma</title>
+  <meta name="description" content="Türkçe haber metinlerini saniyeler içinde kategorilere ayıran, kararını açıklayan yapay zekâ servisi.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='42' cy='42' r='26' fill='none' stroke='%232563eb' stroke-width='10'/><line x1='62' y1='62' x2='86' y2='86' stroke='%232563eb' stroke-width='12' stroke-linecap='round'/></svg>">
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --surface-2: #f1f3f9;
+      --border: #e3e6ef;
+      --text: #141824;
+      --muted: #5d6478;
+      --accent: #2563eb;
+      --accent-soft: #e7eefe;
+      --warn-bg: #fff6e5;
+      --warn-text: #8a5300;
+      --error-bg: #fdecec;
+      --error-text: #a12020;
+      --shadow: 0 1px 2px rgba(20, 24, 36, .05), 0 8px 24px rgba(20, 24, 36, .06);
+      --radius: 14px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1118;
+        --surface: #161a24;
+        --surface-2: #1d2230;
+        --border: #2a3142;
+        --text: #e9ecf3;
+        --muted: #9aa3b7;
+        --accent: #6b9bff;
+        --accent-soft: #1e2a47;
+        --warn-bg: #3a2c10;
+        --warn-text: #ffcf7a;
+        --error-bg: #3d1717;
+        --error-text: #ff9c9c;
+        --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+    header { padding: 28px 0 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand svg { width: 36px; height: 36px; color: var(--accent); }
+    .brand h1 { margin: 0; font-size: 1.45rem; letter-spacing: -.02em; }
+    .brand p { margin: 0; color: var(--muted); font-size: .9rem; }
+    nav a { color: var(--muted); text-decoration: none; font-size: .9rem; margin-left: 16px; }
+    nav a:hover { color: var(--accent); }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; font-size: .85rem; color: var(--muted); }
+    .stat strong { color: var(--text); font-variant-numeric: tabular-nums; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px; }
+    label { font-weight: 600; font-size: .95rem; display: block; margin-bottom: 8px; }
+    textarea, input[type=password] {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+      color: var(--text); font: inherit; padding: 12px 14px; resize: vertical;
+    }
+    textarea { min-height: 130px; }
+    textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    .samples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .chip {
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+      border-radius: 999px; padding: 5px 12px; font-size: .82rem; cursor: pointer;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    button.primary {
+      background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px 22px;
+      font-weight: 600; font-size: .95rem; cursor: pointer;
+    }
+    button.primary:disabled { opacity: .6; cursor: progress; }
+    .hint { color: var(--muted); font-size: .82rem; }
+    .result-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .label { font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+    .confidence { font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .bars { margin-top: 16px; display: grid; gap: 10px; }
+    .bar { display: grid; grid-template-columns: 96px 1fr 58px; gap: 10px; align-items: center; font-size: .9rem; }
+    .track { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+    .fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s ease; }
+    .bar:not(:first-child) .fill { opacity: .45; }
+    .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .keywords { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .kw { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 3px 10px; font-size: .85rem; font-weight: 500; }
+    .alert { border-radius: 10px; padding: 10px 14px; margin-top: 14px; font-size: .9rem; }
+    .alert.warn { background: var(--warn-bg); color: var(--warn-text); }
+    .alert.error { background: var(--error-bg); color: var(--error-text); }
+    .hidden { display: none !important; }
+    footer { color: var(--muted); font-size: .85rem; padding: 20px 0 36px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    footer a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 560px) {
+      .label { font-size: 1.5rem; }
+      .bar { grid-template-columns: 80px 1fr 50px; }
+      nav a { margin: 0 12px 0 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/><path d="M7.5 9h6M7.5 12h4"/>
+        </svg>
+        <div>
+          <h1>HaberLens</h1>
+          <p>Türkçe haber metinleri için açıklanabilir yapay zekâ sınıflandırıcı</p>
+        </div>
+      </div>
+      <nav>
+        <a href="/docs">API Dokümantasyonu</a>
+        <a href="https://github.com/kilicchalitt/haberlens" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <div class="stats" id="stats" aria-live="polite"></div>
+
+    <section class="card">
+      <form id="form">
+        <label for="text">Haber metni</label>
+        <textarea id="text" maxlength="20000" placeholder="Bir haber başlığı ya da metni yapıştırın…" required></textarea>
+        <div class="samples" id="samples" aria-label="Örnek haberler"></div>
+        <div id="auth" class="hidden" style="margin-top:14px">
+          <label for="apiKey">API anahtarı</label>
+          <input type="password" id="apiKey" autocomplete="off" placeholder="X-API-Key">
+        </div>
+        <div class="row">
+          <button class="primary" id="submit" type="submit">Sınıflandır</button>
+          <span class="hint">Kısayol: Ctrl + Enter</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="card hidden" id="result" aria-live="polite">
+      <div class="result-head">
+        <p class="label" id="resLabel"></p>
+        <span class="confidence" id="resConf"></span>
+      </div>
+      <div class="alert warn hidden" id="resWarn">
+        Model bu tahminden emin değil — bu haberin bir editör tarafından kontrol edilmesi önerilir.
+      </div>
+      <div class="bars" id="resBars"></div>
+      <div class="keywords" id="resKeywords"></div>
+    </section>
+
+    <div class="alert error hidden" id="error" role="alert"></div>
+
+    <footer>
+      <span>HaberLens · MIT Lisansı</span>
+      <span>Geliştiren: <a href="https://github.com/kilicchalitt" target="_blank" rel="noopener">Halit Kılıç</a></span>
+    </footer>
+  </div>
+
+  <script>
+    const SAMPLES = [
+      ["Ekonomi", "Merkez Bankası politika faizini sabit tutarken piyasalar dolar kurundaki hareketi yakından izliyor."],
+      ["Spor", "Fenerbahçe deplasmanda Trabzonspor ile 2-2 berabere kaldı, teknik direktör hakem kararlarına tepki gösterdi."],
+      ["Teknoloji", "Yapay zekâ destekli yeni akıllı telefon, gelişmiş kamera özellikleriyle tanıtıldı."],
+      ["Sağlık", "Uzmanlar kış aylarında grip salgınına karşı risk grubundakilerin aşı olmasını öneriyor."],
+      ["Siyaset", "TBMM Genel Kurulu'nda yeni yasa teklifi kabul edildi, muhalefet partileri itiraz etti."],
+      ["Magazin", "Ünlü şarkıcı yeni albümünün tanıtımında hayranlarıyla buluştu."],
+      ["Yaşam", "Otoyolda zincirleme trafik kazası: 3 kişi yaralandı, ekipler bölgeye sevk edildi."],
+    ];
+    const $ = (id) => document.getElementById(id);
+    const form = $("form"), text = $("text"), submit = $("submit");
+    let authRequired = false;
+
+    const storage = {
+      get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+      set(k, v) { try { sessionStorage.setItem(k, v); } catch { /* yok say */ } },
+    };
+
+    function pct(x) { return "%" + (x * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 }); }
+    function el(tag, cls, content) {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (content !== undefined) node.textContent = content;
+      return node;
+    }
+    function headers() {
+      const h = { "Content-Type": "application/json" };
+      const key = $("apiKey").value.trim();
+      if (key) { h["X-API-Key"] = key; storage.set("haberlens-key", key); }
+      return h;
+    }
+    function showError(message) {
+      $("error").textContent = message;
+      $("error").classList.toggle("hidden", !message);
+    }
+
+    SAMPLES.forEach(([name, sample]) => {
+      const chip = el("button", "chip", name);
+      chip.type = "button";
+      chip.addEventListener("click", () => { text.value = sample; form.requestSubmit(); });
+      $("samples").appendChild(chip);
+    });
+
+    async function loadStatus() {
+      try {
+        const health = await (await fetch("/health")).json();
+        authRequired = health.auth_required;
+        $("auth").classList.toggle("hidden", !authRequired);
+        $("apiKey").value = storage.get("haberlens-key") || "";
+        if (!health.model_loaded) {
+          showError("Model yüklü değil. Sunucuda `haberlens train` komutunu çalıştırın.");
+          return;
+        }
+        const res = await fetch("/v1/model", { headers: headers() });
+        if (!res.ok) return;
+        const info = await res.json();
+        const stats = $("stats");
+        stats.replaceChildren();
+        const items = [
+          ["Kategori", info.labels.length],
+          ["Doğruluk", info.metrics.accuracy !== undefined ? pct(info.metrics.accuracy) : "—"],
+          ["Makro F1", info.metrics.f1_macro !== undefined ? pct(info.metrics.f1_macro) : "—"],
+          ["Sürüm", "v" + info.version],
+        ];
+        for (const [k, v] of items) {
+          const s = el("span", "stat", k + ": ");
+          s.appendChild(el("strong", "", String(v)));
+          stats.appendChild(s);
+        }
+      } catch (e) {
+        showError("Sunucuya ulaşılamıyor.");
+      }
+    }
+
+    function render(data) {
+      showError("");
+      const box = $("result");
+      box.classList.remove("hidden");
+      if (data.label === null) {
+        $("resLabel").textContent = "Belirlenemedi";
+        $("resConf").textContent = "";
+        $("resWarn").classList.add("hidden");
+        $("resBars").replaceChildren();
+        $("resKeywords").replaceChildren(el("span", "hint", "Metin, anlamlı bir içerik barındırmıyor."));
+        return;
+      }
+      $("resLabel").textContent = data.label;
+      $("resConf").textContent = "Güven: " + pct(data.confidence) + " · " + data.processing_ms.toLocaleString("tr-TR") + " ms";
+      $("resWarn").classList.toggle("hidden", !data.uncertain);
+
+      const bars = $("resBars");
+      bars.replaceChildren();
+      for (const [label, score] of Object.entries(data.scores)) {
+        const row = el("div", "bar");
+        row.appendChild(el("span", "", label));
+        const track = el("div", "track");
+        const fill = el("div", "fill");
+        fill.style.width = "0%";
+        track.appendChild(fill);
+        row.appendChild(track);
+        row.appendChild(el("span", "pct", pct(score)));
+        bars.appendChild(row);
+        requestAnimationFrame(() => { fill.style.width = (score * 100).toFixed(1) + "%"; });
+      }
+
+      const kws = $("resKeywords");
+      kws.replaceChildren();
+      if (data.keywords.length) {
+        kws.appendChild(el("span", "hint", "Kararı etkileyen kelimeler:"));
+        data.keywords.forEach((k) => kws.appendChild(el("span", "kw", k.term)));
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!text.value.trim()) return;
+      submit.disabled = true;
+      submit.textContent = "Analiz ediliyor…";
+      try {
+        const res = await fetch("/v1/classify", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ text: text.value, top_k: 3, explain: true }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const detail = Array.isArray(data.detail) ? data.detail.map((d) => d.msg).join(", ") : data.detail;
+          throw new Error(detail || "İstek başarısız oldu.");
+        }
+        render(data);
+        if (authRequired) loadStatus();
+      } catch (err) {
+        $("result").classList.add("hidden");
+        showError(err.message);
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Sınıflandır";
+      }
+    });
+
+    text.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") form.requestSubmit();
+    });
+
+    loadStatus();
+  </script>
+</body>
+</html>
