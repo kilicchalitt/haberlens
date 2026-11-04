@@ -106,10 +106,10 @@ class TurkishTextNormalizer(BaseEstimator, TransformerMixin):
         self.remove_stopwords = remove_stopwords
         self.remove_numbers = remove_numbers
 
-    def fit(self, X: Iterable[str], y: object = None) -> TurkishTextNormalizer:  # noqa: N803
+    def fit(self, X: Iterable[str], y: object = None) -> TurkishTextNormalizer:
         return self
 
-    def transform(self, X: Iterable[str]) -> list[str]:  # noqa: N803
+    def transform(self, X: Iterable[str]) -> list[str]:
         return [
             normalize_text(
                 text,
