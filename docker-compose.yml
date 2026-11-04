@@ -1,5 +1,7 @@
 services:
   haberlens:
+    # İlk derleme eğitim derlemini (~80 MB) indirir ve modeli eğitir (~15 dk).
+    # Çalışma belleği: işlem (worker) başına ~450 MB; varsayılan 2 işlem.
     build: .
     image: haberlens:latest
     container_name: haberlens
