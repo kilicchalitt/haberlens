@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "haberlens"
-version = "1.0.0"
+version = "1.1.0"
 description = "Türkçe haber metinleri için üretime hazır, açıklanabilir metin sınıflandırma servisi."
 readme = "README.md"
 requires-python = ">=3.10"

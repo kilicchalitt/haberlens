@@ -4,6 +4,48 @@ Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) standardına,
 sürümleme [Semantic Versioning](https://semver.org/lang/tr/) kurallarına uyar.
 
+## [1.1.0] — 2026-11-04
+
+Odak: modelin **eğitimde görmediği yayın organlarının haberlerine** de uygulanabilmesi.
+Ölçümler ve kararlar: [`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
+
+### Eklendi
+
+- `haberlens data build`: üç kaynaklı (haberlens, YTÜ Kemik 42K, TTC-3600) eğitim derlemini
+  sabitlenmiş adreslerden indirir, SHA-256 ile doğrular, etiketleri ortak şemaya eşler,
+  kaynak izlerini ve tekrarları temizler, manifesto yazar
+- İki yeni kategori: **Dünya** ve **Kültür-Sanat** (toplam 9)
+- Yeni mimariler: `svm` (kalibre Doğrusal SVM), `nb` (Complement Naive Bayes) ve varsayılan
+  `ensemble` (LR + SVM + NB ağırlıklı yumuşak oylama)
+- Başlık artırımı: uzun eğitim haberlerinin ilk 12 kelimesi ek örnek olarak eklenir
+  (yalnızca eğitim bölümüne); görülmemiş kaynağın başlıklarında makro F1 +4,4 puan
+- Yeni metrikler: ilk-2 doğruluk, kaynak bazlı skorlar, başlık benzeri kısa girdi performansı
+- Benchmark'ta görülmemiş kaynak (leave-one-source-out) testi
+- `TurkishTextNormalizer(max_chars=…)`: uzun metinlerde başlık + giriş bölümünün kullanılması
+- Web arayüzüne Dünya ve Kültür-Sanat örnekleri; README'ye LinkedIn bağlantısı
+
+### Değişti
+
+- Varsayılan eğitim verisi `data/processed/news_corpus.csv` (önce `haberlens data build`)
+- Varsayılan model `hybrid` yerine `ensemble`; model dosyası ~4,5 MB'tan ~96 MB'a büyüdü
+- Çapraz doğrulama büyük derlemde varsayılan olarak kapalı (`--cv-folds` ile açılır) ve artık
+  artırımı her katmanın içinde uygular (sızıntısız)
+- `haberlens evaluate` makro F1'i yalnızca verideki kategoriler üzerinden hesaplar
+- Docker imajı derlemi derleme sırasında oluşturur; CI duman testi `HABERLENS_CORPUS=raw`
+  ile hızlı modda çalışır
+- Tüm yüzdeler Türkçe ondalık virgülüyle yazılır
+
+### Düzeltildi
+
+- Kaynak bazlı makro F1, o kaynakta bulunmayan kategorileri de ortalamaya katarak skorları
+  yapay olarak düşürüyordu
+- Başka araçlarla yanlış küçültülmüş "İ" harfleri (`i̇`) kelimeleri ikiye bölüyordu
+
+### Kaldırıldı
+
+- Doğrulanamayan dondurulmuş BERT benchmark yolu ve `torch` / `transformers` isteğe bağlı
+  bağımlılıkları (Word2Vec karşılaştırması korunuyor)
+
 ## [1.0.0] — 2026-11-04
 
 Proje **HaberLens** adıyla yeniden yapılandırıldı ve üretime hazır hâle getirildi.
@@ -53,5 +95,6 @@ Proje **HaberLens** adıyla yeniden yapılandırıldı ve üretime hazır hâle 
 - İlk sürüm: Bag-of-Words, TF-IDF, N-Gram, Word2Vec ve BERT temsillerini 3 kategori
   (Ekonomi, Spor, Teknoloji) üzerinde karşılaştıran tek dosyalık betik
 
+[1.1.0]: https://github.com/kilicchalitt/haberlens/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kilicchalitt/haberlens/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/kilicchalitt/haberlens/releases/tag/v0.1.0
