@@ -2,6 +2,7 @@
 
 Örnekler::
 
+    haberlens data build
     haberlens train
     haberlens predict "Merkez Bankası faizi sabit tuttu"
     haberlens predict --file haberler.csv --text-column baslik --output sonuc.csv
@@ -77,6 +78,7 @@ def cmd_train(args: argparse.Namespace) -> int:
         labels=args.labels,
         test_size=args.test_size,
         cv_folds=args.cv_folds,
+        lead_words=args.lead_words,
         refit_full=not args.no_refit,
     )
     print("\n" + format_report(result.metrics))
@@ -147,8 +149,8 @@ def cmd_predict(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
-    from haberlens.data import LABEL, TEXT, load_dataset
-    from haberlens.evaluation import evaluate_predictions, format_report
+    from haberlens.data import LABEL, SOURCE, TEXT, load_dataset
+    from haberlens.evaluation import evaluate_model, format_report
     from haberlens.predictor import NewsClassifier
 
     classifier = NewsClassifier.load(args.model)
@@ -161,12 +163,39 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     unknown = sorted(set(frame[LABEL]) - set(classifier.labels))
     if unknown:
         raise SystemExit(f"Hata: Model bu kategorileri tanımıyor: {unknown}")
-    predictions = classifier.predict_labels(frame[TEXT].tolist())
-    metrics = evaluate_predictions(frame[LABEL], predictions, classifier.labels)
+    # Makro F1 yalnızca bu veride bulunan kategoriler üzerinden hesaplanır.
+    metrics = evaluate_model(
+        classifier.pipeline,
+        frame[TEXT],
+        frame[LABEL],
+        sorted(set(frame[LABEL])),
+        sources=frame[SOURCE] if SOURCE in frame.columns else None,
+    )
     if args.json:
         print(json.dumps(metrics, ensure_ascii=False, indent=2))
     else:
         print(format_report(metrics))
+    return 0
+
+
+def cmd_data_build(args: argparse.Namespace) -> int:
+    from haberlens.corpus import build_corpus
+
+    manifest = build_corpus(
+        sources=args.sources,
+        raw_path=args.raw,
+        cache_dir=args.cache_dir,
+        output_path=args.output,
+    )
+    print(f"\nDerlem hazır → {manifest['output']} ({manifest['n_samples']} benzersiz haber)")
+    print("\nKategori dağılımı:")
+    for label, count in manifest["categories"].items():
+        print(f"  {label:<13} {count:>6}")
+    print("\nKaynak dağılımı:")
+    for name, count in manifest["by_source"].items():
+        print(f"  {name:<13} {count:>6}")
+    for name, reason in manifest["skipped_sources"].items():
+        print(f"\n⚠️  Atlanan kaynak: {name} — {reason}")
     return 0
 
 
@@ -253,6 +282,30 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--text-column", default=DEFAULT_TEXT_COLUMN, help="metin sütunu adı")
         p.add_argument("--label-column", default=DEFAULT_LABEL_COLUMN, help="etiket sütunu adı")
 
+    # data
+    from haberlens.corpus import (
+        DEFAULT_CACHE_DIR,
+        DEFAULT_OUTPUT_PATH,
+        DEFAULT_RAW_PATH,
+        SOURCES,
+    )
+
+    p_data = sub.add_parser("data", help="eğitim verisi işlemleri")
+    data_sub = p_data.add_subparsers(dest="data_command", required=True, metavar="İŞLEM")
+    p_build = data_sub.add_parser("build", help="çok kaynaklı eğitim derlemini indir ve oluştur")
+    p_build.add_argument(
+        "--sources",
+        nargs="+",
+        choices=sorted(SOURCES),
+        help="kullanılacak kaynaklar (varsayılan: hepsi)",
+    )
+    p_build.add_argument("--raw", type=Path, default=DEFAULT_RAW_PATH, help="özgün veri seti")
+    p_build.add_argument(
+        "--cache-dir", type=Path, default=DEFAULT_CACHE_DIR, help="indirilen dosyaların önbelleği"
+    )
+    p_build.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH, help="çıktı CSV")
+    p_build.set_defaults(func=cmd_data_build)
+
     # train
     p_train = sub.add_parser("train", help="modeli eğit ve kaydet")
     p_train.add_argument("--data", type=Path, default=DEFAULT_DATA_PATH, help="eğitim CSV dosyası")
@@ -266,7 +319,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_column_args(p_train)
     p_train.add_argument("--labels", nargs="+", help="yalnızca bu kategorilerle eğit")
     p_train.add_argument("--test-size", type=float, default=0.2, help="test kümesi oranı")
-    p_train.add_argument("--cv-folds", type=int, default=5, help="çapraz doğrulama (0: kapalı)")
+    p_train.add_argument("--cv-folds", type=int, default=0, help="çapraz doğrulama (0: kapalı)")
+    p_train.add_argument(
+        "--lead-words",
+        type=int,
+        default=12,
+        help="başlık artırımı için uzun haberlerin ilk N kelimesi (0: kapalı)",
+    )
     p_train.add_argument(
         "--no-refit", action="store_true", help="son modeli tüm veriyle yeniden eğitme"
     )

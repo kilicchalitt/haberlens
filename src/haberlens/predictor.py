@@ -94,6 +94,11 @@ class NewsClassifier:
         return list(self._pipeline.classes_)
 
     @property
+    def pipeline(self) -> Pipeline:
+        """Alttaki eğitilmiş scikit-learn pipeline'ı (salt okunur kullanım için)."""
+        return self._pipeline
+
+    @property
     def metadata(self) -> dict[str, Any]:
         return dict(self._artifact.metadata)
 

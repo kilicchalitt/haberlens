@@ -123,3 +123,28 @@ def test_missing_model_returns_error(tmp_path: Path, capsys) -> None:
     code = main(["predict", "--model", str(tmp_path / "yok.joblib"), "test"])
     assert code == 1
     assert "bulunamadı" in capsys.readouterr().err
+
+
+def test_data_build_command(sample_csv: Path, tmp_path: Path, capsys, monkeypatch) -> None:
+    from haberlens import corpus
+
+    monkeypatch.setattr(corpus, "SOURCES", {"haberlens": corpus.SOURCES["haberlens"]})
+    output = tmp_path / "corpus.csv"
+    code = main(["data", "build", "--raw", str(sample_csv), "--output", str(output)])
+    assert code == 0
+    assert pd.read_csv(output).columns.tolist() == ["HABERLER", "ETIKET", "KAYNAK"]
+    out = capsys.readouterr().out
+    assert "Derlem hazır" in out and "haberlens" in out
+
+
+def test_evaluate_on_label_subset_uses_present_labels(
+    trained_model_path: Path, sample_csv: Path, tmp_path: Path, capsys
+) -> None:
+    subset = pd.read_csv(sample_csv)
+    subset = subset[subset["ETIKET"].isin(["Spor", "Ekonomi"])]
+    path = tmp_path / "subset.csv"
+    subset.to_csv(path, index=False)
+    main(["evaluate", "--model", str(trained_model_path), "--data", str(path), "--json"])
+    metrics = json.loads(capsys.readouterr().out)
+    assert set(metrics["per_class"]) == {"Ekonomi", "Spor"}
+    assert metrics["f1_macro"] > 0.9
