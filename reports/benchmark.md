@@ -1,29 +1,36 @@
 # Karşılaştırmalı Değerlendirme (Benchmark)
 
-- **Veri:** 4109 benzersiz haber metni, 7 dengeli kategori
-- **Yöntem:** 5 katlı katmanlı çapraz doğrulama, sabit tohum (42)
-- **Sınıflandırıcı:** Lojistik Regresyon (tüm yöntemlerde aynı)
+- **Veri:** 30435 benzersiz haber, 9 kategori
+- **Kaynaklar:** kemik42k (24099), haberlens (4086), ttc3600 (2250)
+- **Bölme:** katmanlı %80 eğitim / %20 test, sabit tohum (42)
+- **Başlık artırımı:** eğitimde uzun haberlerin ilk 12 kelimesi
 - **Üretim:** `haberlens benchmark` · 2026-11-04
 
-| Sıra | Yöntem | Doğruluk | Makro F1 | Süre (sn) |
-| :-: | --- | :-: | :-: | :-: |
-| 1 | **HaberLens Hybrid** (kelime + karakter) | %98,42 | %98,41 ± 0,32 | 35,8 |
-| 2 | Karakter n-gram | %98,22 | %98,21 ± 0,32 | 31,8 |
-| 3 | TF-IDF | %96,88 | %96,87 ± 0,45 | 16,5 |
-| 4 | Bag-of-Words | %95,42 | %95,41 ± 0,43 | 8,9 |
-| 5 | Word2Vec (ortalama) | %86,81 | %86,82 ± 0,79 | 39,9 |
-| 6 | N-Gram (bigram) | %82,58 | %83,46 ± 1,19 | 24,2 |
+## 1. Ayrılmış test kümesi
 
-> Varsayılan üretim mimarisi: `hybrid`. Süre sütunu tüm katmanlar için toplam eğitim + tahmin süresidir (BERT için gömme hesaplama süresi dahildir).
+| Sıra | Yöntem | Doğruluk | Makro F1 | İlk-2 doğruluk | Başlık F1¹ | Eğitim (sn) |
+| :-: | --- | :-: | :-: | :-: | :-: | :-: |
+| 1 | Hibrit (kelime + karakter) + Lojistik Regresyon | %91,18 | %87,16 | %97,59 | %78,51 | 241,5 |
+| 2 | Hibrit + Doğrusal SVM (kalibre) | %91,19 | %87,16 | %97,26 | %78,88 | 148,5 |
+| 3 | **HaberLens Ensemble** (LR + SVM + NB) | %91,08 | %86,98 | %97,54 | %79,80 | 330,8 |
+| 4 | TF-IDF | %90,44 | %86,12 | %97,08 | %76,94 | 61,5 |
+| 5 | Karakter n-gram | %90,37 | %85,98 | %97,04 | %76,99 | 168,9 |
+| 6 | Bag-of-Words | %89,39 | %84,60 | %96,44 | %74,81 | 38,0 |
+| 7 | Hibrit + Complement Naive Bayes | %90,08 | %84,60 | %97,06 | %78,42 | 65,2 |
+| 8 | Word2Vec (ortalama vektör) | %87,96 | %82,56 | %95,88 | %73,34 | 187,8 |
+| 9 | N-Gram (bigram) | %85,92 | %79,27 | %92,69 | %64,32 | 81,5 |
 
-## Notlar
+¹ Uzun test haberlerinin yalnızca ilk 12 kelimesi verildiğinde (başlık benzeri kısa girdi) makro F1.
 
-- **BERT** (`dbmdz/bert-base-turkish-cased`, dondurulmuş gömmeler) bu raporun üretildiği
-  ortamda Hugging Face Hub'a erişim olmadığı için ölçülemedi. Kendi makinenizde
-  `pip install -e ".[embeddings]"` ardından `haberlens benchmark --include-embeddings`
-  komutuyla tabloya eklenir.
-- **N-Gram (bigram)** yöntemi yalnızca kelime ikililerini kullandığı için kısa başlıklarda
-  seyrek kalır; orijinal çalışmadaki yapılandırma karşılaştırma amacıyla korunmuştur.
-- **Word2Vec** yalnızca bu veri setiyle (~4 bin kısa metin) eğitildiğinden anlamlı vektörler
-  öğrenmek için yeterli veriye sahip değildir; büyük bir derlemle önceden eğitilmiş
-  vektörlerle sonuç iyileşebilir.
+## 2. Görülmemiş kaynak testi (leave-one-source-out)
+
+Her sütunda o kaynak eğitimden tamamen çıkarılmış ve model yalnızca diğer kaynaklarla eğitilmiştir. Değerler makro F1'dir (yalnızca o kaynakta bulunan kategoriler üzerinden).
+
+| Yöntem | → haberlens | → kemik42k | → ttc3600 | Ortalama |
+| --- | :-: | :-: | :-: | :-: |
+| Hibrit (kelime + karakter) + Lojistik Regresyon | %86,93 | %77,93 | %88,92 | %84,59 |
+| Hibrit + Doğrusal SVM (kalibre) | %87,42 | %78,75 | %89,99 | %85,39 |
+| Hibrit + Complement Naive Bayes | %84,19 | %77,54 | %86,50 | %82,74 |
+| **HaberLens Ensemble** (LR + SVM + NB) | %87,49 | %78,74 | %89,63 | %85,29 |
+
+> Varsayılan üretim mimarisi: `ensemble`.

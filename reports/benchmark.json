@@ -1,50 +1,180 @@
-[
-  {
-    "method": "hybrid",
-    "display_name": "**HaberLens Hybrid** (kelime + karakter)",
-    "accuracy_mean": 0.9842,
-    "f1_macro_mean": 0.9841,
-    "f1_macro_std": 0.0032,
-    "fit_seconds": 35.8
+{
+  "n_samples": 30435,
+  "n_classes": 9,
+  "test_size": 0.2,
+  "lead_words": 12,
+  "sources": {
+    "kemik42k": 24099,
+    "haberlens": 4086,
+    "ttc3600": 2250
   },
-  {
-    "method": "char",
-    "display_name": "Karakter n-gram",
-    "accuracy_mean": 0.9822,
-    "f1_macro_mean": 0.9821,
-    "f1_macro_std": 0.0032,
-    "fit_seconds": 31.8
-  },
-  {
-    "method": "tfidf",
-    "display_name": "TF-IDF",
-    "accuracy_mean": 0.9688,
-    "f1_macro_mean": 0.9687,
-    "f1_macro_std": 0.0045,
-    "fit_seconds": 16.5
-  },
-  {
-    "method": "bow",
-    "display_name": "Bag-of-Words",
-    "accuracy_mean": 0.9542,
-    "f1_macro_mean": 0.9541,
-    "f1_macro_std": 0.0043,
-    "fit_seconds": 8.9
-  },
-  {
-    "method": "word2vec",
-    "display_name": "Word2Vec (ortalama)",
-    "accuracy_mean": 0.8681,
-    "f1_macro_mean": 0.8682,
-    "f1_macro_std": 0.0079,
-    "fit_seconds": 39.9
-  },
-  {
-    "method": "bigram",
-    "display_name": "N-Gram (bigram)",
-    "accuracy_mean": 0.8258,
-    "f1_macro_mean": 0.8346,
-    "f1_macro_std": 0.0119,
-    "fit_seconds": 24.2
-  }
-]
+  "holdout": [
+    {
+      "method": "hybrid",
+      "display_name": "Hibrit (kelime + karakter) + Lojistik Regresyon",
+      "accuracy": 0.9118,
+      "f1_macro": 0.8716,
+      "top2_accuracy": 0.9759,
+      "headline_f1": 0.7851,
+      "fit_seconds": 241.5
+    },
+    {
+      "method": "svm",
+      "display_name": "Hibrit + Doğrusal SVM (kalibre)",
+      "accuracy": 0.9119,
+      "f1_macro": 0.8716,
+      "top2_accuracy": 0.9726,
+      "headline_f1": 0.7888,
+      "fit_seconds": 148.5
+    },
+    {
+      "method": "ensemble",
+      "display_name": "**HaberLens Ensemble** (LR + SVM + NB)",
+      "accuracy": 0.9108,
+      "f1_macro": 0.8698,
+      "top2_accuracy": 0.9754,
+      "headline_f1": 0.798,
+      "fit_seconds": 330.8
+    },
+    {
+      "method": "tfidf",
+      "display_name": "TF-IDF",
+      "accuracy": 0.9044,
+      "f1_macro": 0.8612,
+      "top2_accuracy": 0.9708,
+      "headline_f1": 0.7694,
+      "fit_seconds": 61.5
+    },
+    {
+      "method": "char",
+      "display_name": "Karakter n-gram",
+      "accuracy": 0.9037,
+      "f1_macro": 0.8598,
+      "top2_accuracy": 0.9704,
+      "headline_f1": 0.7699,
+      "fit_seconds": 168.9
+    },
+    {
+      "method": "bow",
+      "display_name": "Bag-of-Words",
+      "accuracy": 0.8939,
+      "f1_macro": 0.846,
+      "top2_accuracy": 0.9644,
+      "headline_f1": 0.7481,
+      "fit_seconds": 38.0
+    },
+    {
+      "method": "nb",
+      "display_name": "Hibrit + Complement Naive Bayes",
+      "accuracy": 0.9008,
+      "f1_macro": 0.846,
+      "top2_accuracy": 0.9706,
+      "headline_f1": 0.7842,
+      "fit_seconds": 65.2
+    },
+    {
+      "method": "word2vec",
+      "display_name": "Word2Vec (ortalama vektör)",
+      "accuracy": 0.8796,
+      "f1_macro": 0.8256,
+      "top2_accuracy": 0.9588,
+      "headline_f1": 0.7334,
+      "fit_seconds": 187.8
+    },
+    {
+      "method": "bigram",
+      "display_name": "N-Gram (bigram)",
+      "accuracy": 0.8592,
+      "f1_macro": 0.7927,
+      "top2_accuracy": 0.9269,
+      "headline_f1": 0.6432,
+      "fit_seconds": 81.5
+    }
+  ],
+  "cross_source": [
+    {
+      "method": "hybrid",
+      "held_out_source": "haberlens",
+      "n_test": 4086,
+      "accuracy": 0.8321,
+      "f1_macro": 0.8693
+    },
+    {
+      "method": "svm",
+      "held_out_source": "haberlens",
+      "n_test": 4086,
+      "accuracy": 0.8385,
+      "f1_macro": 0.8742
+    },
+    {
+      "method": "nb",
+      "held_out_source": "haberlens",
+      "n_test": 4086,
+      "accuracy": 0.813,
+      "f1_macro": 0.8419
+    },
+    {
+      "method": "ensemble",
+      "held_out_source": "haberlens",
+      "n_test": 4086,
+      "accuracy": 0.8385,
+      "f1_macro": 0.8749
+    },
+    {
+      "method": "hybrid",
+      "held_out_source": "kemik42k",
+      "n_test": 20449,
+      "accuracy": 0.8816,
+      "f1_macro": 0.7793
+    },
+    {
+      "method": "svm",
+      "held_out_source": "kemik42k",
+      "n_test": 20449,
+      "accuracy": 0.8863,
+      "f1_macro": 0.7875
+    },
+    {
+      "method": "nb",
+      "held_out_source": "kemik42k",
+      "n_test": 20449,
+      "accuracy": 0.8787,
+      "f1_macro": 0.7754
+    },
+    {
+      "method": "ensemble",
+      "held_out_source": "kemik42k",
+      "n_test": 20449,
+      "accuracy": 0.8869,
+      "f1_macro": 0.7874
+    },
+    {
+      "method": "hybrid",
+      "held_out_source": "ttc3600",
+      "n_test": 2250,
+      "accuracy": 0.8796,
+      "f1_macro": 0.8892
+    },
+    {
+      "method": "svm",
+      "held_out_source": "ttc3600",
+      "n_test": 2250,
+      "accuracy": 0.8929,
+      "f1_macro": 0.8999
+    },
+    {
+      "method": "nb",
+      "held_out_source": "ttc3600",
+      "n_test": 2250,
+      "accuracy": 0.868,
+      "f1_macro": 0.865
+    },
+    {
+      "method": "ensemble",
+      "held_out_source": "ttc3600",
+      "n_test": 2250,
+      "accuracy": 0.8902,
+      "f1_macro": 0.8963
+    }
+  ]
+}
