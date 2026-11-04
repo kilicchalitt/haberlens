@@ -109,7 +109,7 @@ def split_dataset(
     random_state: int = RANDOM_STATE,
 ) -> DatasetSplit:
     """Sınıf oranlarını koruyarak (stratified) eğitim/test ayrımı yapar."""
-    X_train, X_test, y_train, y_test = train_test_split(  # noqa: N806
+    X_train, X_test, y_train, y_test = train_test_split(
         frame[TEXT],
         frame[LABEL],
         test_size=test_size,
