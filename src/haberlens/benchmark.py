@@ -111,7 +111,12 @@ def run_benchmark(
             # BERT ağırlıkları dondurulmuş olduğundan (fit edilmez) gömmeler bir kez
             # hesaplanabilir; bu, test verisinin eğitime sızması anlamına gelmez.
             started = time.perf_counter()
-            embeddings = BertEmbedder().transform(X)
+            try:
+                embeddings = BertEmbedder().transform(X)
+            except OSError as exc:
+                # Ör. Hugging Face Hub'a erişim yok: diğer sonuçları kaybetmeden atla.
+                logger.warning("BERT atlandı, model indirilemedi: %s", exc)
+                return sorted(results, key=lambda r: r.f1_macro_mean, reverse=True)
             encode_seconds = time.perf_counter() - started
             bert = _score("bert", Pipeline(_linear(scale=True)), embeddings, y, cv)
             results.append(
