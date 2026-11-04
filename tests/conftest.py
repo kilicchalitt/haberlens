@@ -11,14 +11,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from haberlens.config import DEFAULT_DATA_PATH
-
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "turkish_news.csv"
 SAMPLES_PER_CLASS = 60
 
 
 @pytest.fixture(scope="session")
 def sample_csv(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    frame = pd.read_csv(DEFAULT_DATA_PATH)
+    frame = pd.read_csv(DATA_PATH)
     sample = frame.groupby("ETIKET", group_keys=False).head(SAMPLES_PER_CLASS)
     path = tmp_path_factory.mktemp("data") / "sample.csv"
     sample.to_csv(path, index=False)
