@@ -143,6 +143,10 @@ class NewsClassifier:
             )
         return predictions
 
+    def predict_labels(self, texts: Sequence[str]) -> list[str]:
+        """Yalnızca etiketleri döndüren hızlı yol (değerlendirme için)."""
+        return [str(label) for label in self._pipeline.predict(list(texts))]
+
     # --------------------------------------------------------------- açıklama
     @cached_property
     def _explainable_features(self) -> tuple[np.ndarray, np.ndarray] | None:
