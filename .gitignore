@@ -23,6 +23,7 @@ models/*
 
 # Local data & secrets
 data/interim/
+data/external/
 data/processed/
 .env
 *.env.local
