@@ -55,3 +55,42 @@ def test_loading_foreign_file_raises(tmp_path: Path) -> None:
     joblib.dump({"not": "a model"}, path)
     with pytest.raises(ModelLoadError, match="geçerli bir HaberLens"):
         ModelArtifact.load(path)
+
+
+def test_augment_with_leads_adds_only_long_texts() -> None:
+    import pandas as pd
+
+    from haberlens.training import augment_with_leads
+
+    texts = pd.Series(["kısa haber", " ".join(f"kelime{i}" for i in range(30))], index=[7, 9])
+    labels = pd.Series(["Spor", "Ekonomi"], index=[7, 9])
+    out_texts, out_labels = augment_with_leads(texts, labels, n_words=5)
+    assert len(out_texts) == 3
+    assert out_texts.iloc[-1] == "kelime0 kelime1 kelime2 kelime3 kelime4"
+    assert out_labels.tolist() == ["Spor", "Ekonomi", "Ekonomi"]
+    same_texts, _ = augment_with_leads(texts, labels, n_words=0)
+    assert len(same_texts) == 2
+
+
+def test_training_reports_source_and_headline_metrics(tmp_path: Path) -> None:
+    import pandas as pd
+
+    base = pd.read_csv(Path(__file__).resolve().parents[1] / "data/raw/turkish_news.csv")
+    sample = base.groupby("ETIKET", group_keys=False).head(40).copy()
+    long = sample.copy()
+    long["HABERLER"] = (long["HABERLER"] + " ") * 6  # uzun metin benzetimi
+    sample["KAYNAK"], long["KAYNAK"] = "kisa", "uzun"
+    path = tmp_path / "corpus.csv"
+    pd.concat([sample, long]).to_csv(path, index=False)
+
+    result = train_model(
+        data_path=path, output_path=tmp_path / "m.joblib", architecture="tfidf", refit_full=False
+    )
+    metrics = result.metrics
+    assert set(metrics["per_source"]) == {"kisa", "uzun"}
+    assert 0 < metrics["top2_accuracy"] <= 1
+    assert metrics["top2_accuracy"] >= metrics["accuracy"]
+    assert metrics["headline"]["n"] > 0
+    distribution = result.metadata["data"]["source_distribution"]
+    assert set(distribution) == {"kisa", "uzun"}
+    assert distribution["kisa"] == distribution["uzun"]  # tekrarlar iki kaynakta da ayıklanır
