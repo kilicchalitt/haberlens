@@ -25,3 +25,25 @@ def test_format_report_lists_every_class() -> None:
     report = format_report(metrics)
     assert "Doğruluk" in report and "Makro F1" in report
     assert "Ekonomi" in report and "Spor" in report
+
+
+def test_top_k_accuracy() -> None:
+    import numpy as np
+
+    from haberlens.evaluation import top_k_accuracy
+
+    proba = np.array([[0.6, 0.3, 0.1], [0.2, 0.3, 0.5], [0.1, 0.2, 0.7]])
+    classes = ["A", "B", "C"]
+    assert top_k_accuracy(["A", "B", "A"], proba, classes, k=1) == 0.3333
+    assert top_k_accuracy(["A", "B", "A"], proba, classes, k=2) == 0.6667
+
+
+def test_format_report_includes_extended_sections() -> None:
+    metrics = evaluate_predictions(["Spor", "Ekonomi"], ["Spor", "Spor"], ["Ekonomi", "Spor"])
+    metrics["top2_accuracy"] = 1.0
+    metrics["per_source"] = {"kemik": {"n": 2, "accuracy": 0.5, "f1_macro": 0.33}}
+    metrics["headline"] = {"lead_words": 12, "n": 2, "accuracy": 0.5, "f1_macro": 0.33}
+    report = format_report(metrics)
+    assert "İlk-2 doğruluk" in report
+    assert "kemik" in report
+    assert "Başlık benzeri" in report
