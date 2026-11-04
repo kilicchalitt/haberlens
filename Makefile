@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 PYTHON ?= python
 
-.PHONY: help install dev train serve test lint format benchmark docker-build docker-run clean
+.PHONY: help install dev data train serve test lint format benchmark docker-build docker-run clean
 
 help: ## Komutları listele
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -12,7 +12,10 @@ install: ## Paketi API desteğiyle kur
 dev: ## Geliştirme bağımlılıklarını kur
 	$(PYTHON) -m pip install -e ".[dev]"
 
-train: ## Modeli eğit (models/haberlens.joblib)
+data: ## Çok kaynaklı eğitim derlemini indir ve oluştur
+	haberlens data build
+
+train: ## Modeli eğit (models/haberlens.joblib); önce `make data`
 	haberlens train
 
 serve: ## API + web arayüzünü başlat (http://127.0.0.1:8000)

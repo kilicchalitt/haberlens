@@ -40,6 +40,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: pyproject.toml
+      - name: Install libarchive (RAR support for the corpus builder tests)
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: pip install -e ".[dev]"
       - run: pytest --cov --cov-report=term-missing --cov-report=xml
       - name: Upload coverage report
@@ -62,6 +64,7 @@ jobs:
           push: false
           tags: haberlens:ci
           load: true
+          build-args: HABERLENS_CORPUS=raw
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Smoke test

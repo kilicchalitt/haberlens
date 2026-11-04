@@ -15,8 +15,19 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install ".[api]"
 
-COPY data ./data
-RUN haberlens train --output /app/models/haberlens.joblib --cv-folds 0
+# full: çok kaynaklı derlemi indirip doğrular ve üretim modelini eğitir (varsayılan)
+# raw : yalnızca depodaki özgün veriyle hızlı derleme (CI duman testi için)
+ARG HABERLENS_CORPUS=full
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libarchive-tools \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY data/raw ./data/raw
+RUN if [ "$HABERLENS_CORPUS" = "full" ]; then \
+      haberlens data build && haberlens train --output /app/models/haberlens.joblib; \
+    else \
+      haberlens train --data data/raw/turkish_news.csv --output /app/models/haberlens.joblib; \
+    fi
 
 # ---------- 2. aşama: yalın çalışma imajı ----------
 FROM python:3.12-slim AS runtime

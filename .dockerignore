@@ -9,6 +9,8 @@ venv
 .coverage
 htmlcov
 models/*
+data/external
+data/processed
 reports
 docs
 tests
