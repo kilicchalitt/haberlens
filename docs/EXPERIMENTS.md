@@ -65,9 +65,9 @@ karakter.
 
 ¹ Kemik + TTC-3600 ile eğitilip haberlens başlıklarında test (başlık artırımı olmadan).
 
-**Karar:** Varsayılan model **LR + SVM + NB** topluluğu. Aynı dağılımdaki testte tek
-modellerle aynı düzeyde, görülmemiş kaynakta ise Lojistik Regresyondan 4,4 puan iyi.
-Modeller farklı türde hatalar yaptığı için birleşim genellemeyi artırıyor.
+**Ara karar:** LR + SVM + NB topluluğu. Bu ölçümde (başlık artırımı olmadan) görülmemiş
+kaynakta Lojistik Regresyondan 4,4 puan iyiydi. Başlık artırımı eklendikten sonraki son
+durum için bkz. bölüm 7.
 
 **fastText neden eklenmedi:** Topluluğa +1,1 puan görülmemiş kaynak kazancı sağladı,
 ancak karışık testte −0,5 puan kaybettirdi. Ayrıca derleme gerektiren bir C++
@@ -101,3 +101,24 @@ metindir. Her uzun eğitim haberinin ilk N kelimesi ek örnek olarak eklendi
 | 3.000 | %83,3 | %88,1 |
 
 **Karar:** 1.500 karakter. Doğruluk farkı ihmal edilebilir; eğitim ve tahmin daha hızlı.
+
+## 7. Son benchmark (başlık artırımıyla, `reports/benchmark.md`)
+
+Başlık artırımı tek modelleri de güçlendirdi; topluluğun genelleme avantajı büyük ölçüde
+kapandı:
+
+| Model | Ayrılmış test makro F1 | Başlık F1 | İlk-2 | Görülmemiş kaynak ort. |
+| --- | :-: | :-: | :-: | :-: |
+| Lojistik Regresyon | %87,16 | %78,51 | %97,59 | %84,6 |
+| Doğrusal SVM (kalibre) | %87,16 | %78,88 | %97,26 | %85,4 |
+| **Topluluk (LR + SVM + NB)** | %86,98 | **%79,80** | %97,54 | %85,3 |
+
+**Son karar:** Farklar 1 puanın altında ve ölçüm gürültüsü düzeyinde. Topluluk varsayılan
+olarak tutuldu, çünkü asıl kullanım senaryosu olan kısa başlıklarda en iyisi ve
+olasılıkları tek SVM'den daha iyi kalibre (ECE 0,021'e karşı 0,034; bölüm 4 ölçümü).
+Bedeli ölçüldü: 2,2 kat eğitim süresi, 4 kat büyük model dosyası (96 MB'a karşı 22 MB) ve
+~%30 fazla çalışma belleği (484 MB'a karşı 371 MB). Kaynağı kısıtlı ortamlarda
+`--architecture svm` eşdeğer doğrulukla daha hafif bir seçenektir.
+
+**Ders:** Bir iyileştirmenin (topluluk) kazancı, başka bir iyileştirme (artırım) eklendikten
+sonra yeniden ölçülmelidir; ara ölçümler son karar için yeterli değildir.

@@ -77,10 +77,18 @@ eşleştirir; ek bir kök bulucuya (stemmer) gerek kalmaz. Kelime n-gramları is
 ### Neden üç modelin topluluğu?
 
 Lojistik Regresyon, Doğrusal SVM ve Naive Bayes aynı öznitelikler üzerinde farklı
-varsayımlarla çalışır ve farklı hatalar yapar. Aynı dağılımdaki testte topluluk tek
-modellerle aynı düzeydedir; **görülmemiş kaynakta** ise Lojistik Regresyondan 4 puandan
-fazla iyidir. Kurumların modeli kendi (eğitimde görülmemiş) haberlerine uygulayacağı
-düşünüldüğünde belirleyici ölçüt budur.
+varsayımlarla çalışır. Son benchmark'ta (başlık artırımıyla) topluluk ve SVM görülmemiş
+kaynakta aynı düzeydedir (ortalama makro F1 %85,3 / %85,4), Lojistik Regresyon biraz
+geridedir (%84,6); farklar 1 puanın altındadır. Topluluğun varsayılan olmasının nedenleri:
+
+- başlık benzeri kısa girdilerde en yüksek makro F1 (%79,8; SVM %78,9, LR %78,5),
+- en iyi ilk-2 doğruluk (%97,5),
+- LR ile ortalandığı için tek SVM'den daha iyi kalibre olasılıklar (ECE 0,021'e karşı 0,034);
+  *belirsiz* bayrağı bu olasılıklara dayanır.
+
+Bedeli 2,2 kat eğitim süresi, 4 kat büyük model dosyası (96 MB'a karşı 22 MB) ve ~%30 fazla
+çalışma belleğidir (484 MB'a karşı 371 MB). Kaynağı kısıtlı ortamlarda
+`haberlens train --architecture svm` eşdeğer doğrulukla daha hafif bir seçenektir.
 
 - **Lojistik Regresyon:** iyi kalibre olasılıklar ve açıklamalar için doğrusal ağırlıklar
 - **Doğrusal SVM:** seyrek, yüksek boyutlu metinde güçlü karar sınırı; sigmoid

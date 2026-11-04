@@ -12,9 +12,10 @@ ortalamasıdır (yumuşak oylama):
 * **Doğrusal SVM** (sigmoid ile kalibre) — yüksek boyutlu seyrek metinde güçlü sınır
 * **Complement Naive Bayes** — farklı tümevarımsal varsayım; dengesiz sınıflarda sağlam
 
-Üç model farklı türde hatalar yaptığı için birleşimleri, eğitimde görülmemiş
-kaynaklardan gelen haberlerde tek modellerden belirgin şekilde daha iyi
-genelleşir (bkz. ``reports/benchmark.md``). Karakter n-gramları Türkçenin
+Benchmark'ta topluluk, görülmemiş kaynaklarda Doğrusal SVM ile aynı düzeyde ve
+Lojistik Regresyondan biraz iyidir; başlık benzeri kısa girdilerde ve ilk-2
+doğrulukta en iyi sonucu verir (bkz. ``reports/benchmark.md``). Kaynağı kısıtlı
+ortamlar için ``svm`` daha hafif bir seçenektir. Karakter n-gramları Türkçenin
 sondan eklemeli yapısını (``ekonomi / ekonomik / ekonomide``) kök bulucuya
 gerek kalmadan yakalar.
 """
