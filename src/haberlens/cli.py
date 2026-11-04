@@ -8,7 +8,7 @@
     haberlens predict --file haberler.csv --text-column baslik --output sonuc.csv
     haberlens evaluate --data kurum_test.csv
     haberlens info
-    haberlens benchmark --include-embeddings
+    haberlens benchmark
     haberlens serve --port 8000
 """
 
@@ -220,20 +220,20 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 
 def cmd_benchmark(args: argparse.Namespace) -> int:
-    from haberlens.benchmark import run_benchmark, write_report
-    from haberlens.data import load_dataset
+    from haberlens.benchmark import DEFAULT_CROSS_SOURCE_METHODS, run_benchmark, write_report
 
-    results = run_benchmark(
+    report = run_benchmark(
         data_path=args.data,
-        folds=args.folds,
         methods=args.methods,
         include_embeddings=args.include_embeddings,
+        cross_source_methods=(
+            None if args.no_cross_source else args.cross_source or DEFAULT_CROSS_SOURCE_METHODS
+        ),
+        test_size=args.test_size,
     )
-    report = write_report(
-        results, args.output_dir, folds=args.folds, n_samples=len(load_dataset(args.data))
-    )
-    print(report.read_text(encoding="utf-8"))
-    print(f"Rapor kaydedildi → {report}")
+    path = write_report(report, args.output_dir)
+    print(path.read_text(encoding="utf-8"))
+    print(f"Rapor kaydedildi → {path}")
     return 0
 
 
@@ -360,12 +360,21 @@ def build_parser() -> argparse.ArgumentParser:
     # benchmark
     p_bench = sub.add_parser("benchmark", help="metin temsili yöntemlerini karşılaştır")
     p_bench.add_argument("--data", type=Path, default=DEFAULT_DATA_PATH, help="veri CSV dosyası")
-    p_bench.add_argument("--folds", type=int, default=5, help="çapraz doğrulama katman sayısı")
+    p_bench.add_argument("--test-size", type=float, default=0.2, help="test kümesi oranı")
     p_bench.add_argument("--methods", nargs="+", choices=sorted(ARCHITECTURES), help="yöntemler")
+    p_bench.add_argument(
+        "--cross-source",
+        nargs="+",
+        choices=sorted(ARCHITECTURES),
+        help="görülmemiş kaynak testinde kullanılacak yöntemler",
+    )
+    p_bench.add_argument(
+        "--no-cross-source", action="store_true", help="görülmemiş kaynak testini atla"
+    )
     p_bench.add_argument(
         "--include-embeddings",
         action="store_true",
-        help="Word2Vec ve BERT'i de dahil et (haberlens[embeddings] gerekir)",
+        help="Word2Vec'i de dahil et (haberlens[embeddings] gerekir)",
     )
     p_bench.add_argument("--output-dir", type=Path, default=Path("reports"), help="rapor dizini")
     p_bench.set_defaults(func=cmd_benchmark)

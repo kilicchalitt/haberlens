@@ -1,11 +1,16 @@
-"""Metin temsili yöntemlerinin karşılaştırmalı değerlendirmesi.
+"""Model mimarilerinin karşılaştırmalı ve tekrarlanabilir değerlendirmesi.
 
-Tüm yöntemler aynı veri, aynı katmanlı (stratified) k-katlı çapraz doğrulama
-bölmeleri ve aynı sınıflandırıcı ailesi (Lojistik Regresyon) ile ölçülür;
-böylece fark yalnızca metin temsilinden kaynaklanır.
+İki soruya cevap verir:
 
-İsteğe bağlı Word2Vec ve BERT yöntemleri ``haberlens[embeddings]`` kuruluysa
-çalıştırılır.
+1. **Ayrılmış test kümesi:** Tüm mimariler aynı katmanlı %80 / %20 bölmede
+   eğitilir ve ölçülür (doğruluk, makro F1, ilk-2 doğruluk, başlık performansı).
+2. **Görülmemiş kaynak (leave-one-source-out):** Her veri kaynağı sırayla
+   tamamen dışarıda bırakılır; model diğer kaynaklarla eğitilip hiç görmediği
+   kaynağın haberlerinde test edilir. Bu, modelin *başka bir yayın organının*
+   haberlerine ne kadar genellendiğinin dürüst ölçüsüdür.
+
+Eğitim verisine başlık artırımı (bkz. ``training.augment_with_leads``) yalnızca
+eğitim bölümüne uygulanır.
 """
 
 from __future__ import annotations
@@ -13,22 +18,30 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from haberlens.config import DEFAULT_DATA_PATH, RANDOM_STATE
-from haberlens.data import LABEL, TEXT, load_dataset
-from haberlens.pipelines import ARCHITECTURES, DEFAULT_ARCHITECTURE, build_pipeline
+from haberlens.data import LABEL, SOURCE, TEXT, load_dataset, split_dataset
+from haberlens.evaluation import evaluate_model
+from haberlens.pipelines import ARCHITECTURES, DEFAULT_ARCHITECTURE, MAX_CHARS, build_pipeline
 from haberlens.preprocessing import TurkishTextNormalizer
+from haberlens.training import DEFAULT_LEAD_WORDS, augment_with_leads
 
-__all__ = ["BenchmarkResult", "run_benchmark", "write_report"]
+__all__ = [
+    "BenchmarkReport",
+    "BenchmarkResult",
+    "CrossSourceResult",
+    "run_benchmark",
+    "write_report",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -37,140 +50,227 @@ DISPLAY_NAMES = {
     "tfidf": "TF-IDF",
     "bigram": "N-Gram (bigram)",
     "char": "Karakter n-gram",
-    "hybrid": "**HaberLens Hybrid** (kelime + karakter)",
-    "word2vec": "Word2Vec (ortalama)",
-    "bert": "BERT (dbmdz/bert-base-turkish-cased, dondurulmuş)",
+    "hybrid": "Hibrit (kelime + karakter) + Lojistik Regresyon",
+    "svm": "Hibrit + Doğrusal SVM (kalibre)",
+    "nb": "Hibrit + Complement Naive Bayes",
+    "ensemble": "**HaberLens Ensemble** (LR + SVM + NB)",
+    "word2vec": "Word2Vec (ortalama vektör)",
 }
+DEFAULT_CROSS_SOURCE_METHODS = ("hybrid", "svm", "nb", "ensemble")
 
 
 @dataclass(frozen=True)
 class BenchmarkResult:
     method: str
     display_name: str
-    accuracy_mean: float
-    f1_macro_mean: float
-    f1_macro_std: float
+    accuracy: float
+    f1_macro: float
+    top2_accuracy: float
+    headline_f1: float | None
     fit_seconds: float
 
 
-def _linear(scale: bool = False) -> list[tuple[str, object]]:
-    steps: list[tuple[str, object]] = []
-    if scale:
-        steps.append(("scale", StandardScaler()))
-    steps.append(("classifier", LogisticRegression(max_iter=3000, random_state=RANDOM_STATE)))
-    return steps
+@dataclass(frozen=True)
+class CrossSourceResult:
+    method: str
+    held_out_source: str
+    n_test: int
+    accuracy: float
+    f1_macro: float
 
 
-def _score(
-    name: str, estimator: object, X: object, y: object, cv: StratifiedKFold
-) -> BenchmarkResult:
-    logger.info("Değerlendiriliyor: %s", name)
-    started = time.perf_counter()
-    scores = cross_validate(estimator, X, y, cv=cv, scoring=("accuracy", "f1_macro"), n_jobs=1)
-    elapsed = time.perf_counter() - started
-    return BenchmarkResult(
-        method=name,
-        display_name=DISPLAY_NAMES.get(name, name),
-        accuracy_mean=round(float(np.mean(scores["test_accuracy"])), 4),
-        f1_macro_mean=round(float(np.mean(scores["test_f1_macro"])), 4),
-        f1_macro_std=round(float(np.std(scores["test_f1_macro"])), 4),
-        fit_seconds=round(elapsed, 1),
+@dataclass
+class BenchmarkReport:
+    n_samples: int
+    n_classes: int
+    test_size: float
+    lead_words: int
+    sources: dict[str, int] = field(default_factory=dict)
+    holdout: list[BenchmarkResult] = field(default_factory=list)
+    cross_source: list[CrossSourceResult] = field(default_factory=list)
+
+
+def _word2vec_pipeline() -> Pipeline:
+    from haberlens.embeddings import Word2VecVectorizer
+
+    return Pipeline(
+        [
+            ("normalize", TurkishTextNormalizer(max_chars=MAX_CHARS)),
+            ("features", Word2VecVectorizer()),
+            ("scale", StandardScaler()),
+            ("classifier", LogisticRegression(max_iter=3000, random_state=RANDOM_STATE)),
+        ]
     )
+
+
+def _factory(name: str) -> Pipeline:
+    return _word2vec_pipeline() if name == "word2vec" else build_pipeline(name)
 
 
 def run_benchmark(
     *,
     data_path: str | Path = DEFAULT_DATA_PATH,
-    folds: int = 5,
     methods: list[str] | None = None,
     include_embeddings: bool = False,
-) -> list[BenchmarkResult]:
-    """Seçilen yöntemleri çapraz doğrulama ile karşılaştırır."""
+    cross_source_methods: list[str] | tuple[str, ...] | None = DEFAULT_CROSS_SOURCE_METHODS,
+    test_size: float = 0.2,
+    lead_words: int = DEFAULT_LEAD_WORDS,
+) -> BenchmarkReport:
+    """Mimarileri karşılaştırır ve bir ``BenchmarkReport`` döndürür.
+
+    ``cross_source_methods`` boş verilirse veya veride kaynak sütunu yoksa
+    görülmemiş kaynak testi atlanır.
+    """
     frame = load_dataset(data_path)
-    X, y = frame[TEXT].tolist(), frame[LABEL].to_numpy()
-    cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=RANDOM_STATE)
+    labels = sorted(frame[LABEL].unique())
+    split = split_dataset(frame, test_size=test_size, random_state=RANDOM_STATE)
+    train_texts, train_labels = augment_with_leads(split.X_train, split.y_train, lead_words)
 
-    selected = methods or list(ARCHITECTURES)
-    results = [_score(name, build_pipeline(name), X, y, cv) for name in selected]
-
+    selected = list(methods or ARCHITECTURES)
     if include_embeddings:
         try:
-            from haberlens.embeddings import BertEmbedder, Word2VecVectorizer
-        except ImportError:  # pragma: no cover
-            logger.warning("Gömme yöntemleri için: pip install 'haberlens[embeddings]'")
+            import gensim  # noqa: F401
+        except ImportError:  # pragma: no cover - isteğe bağlı bağımlılık
+            logger.warning("Word2Vec için: pip install 'haberlens[embeddings]'")
         else:
-            w2v = Pipeline(
-                [
-                    ("normalize", TurkishTextNormalizer()),
-                    ("features", Word2VecVectorizer()),
-                    *_linear(scale=True),
-                ]
-            )
-            results.append(_score("word2vec", w2v, X, y, cv))
+            selected.append("word2vec")
 
-            # BERT ağırlıkları dondurulmuş olduğundan (fit edilmez) gömmeler bir kez
-            # hesaplanabilir; bu, test verisinin eğitime sızması anlamına gelmez.
-            started = time.perf_counter()
-            try:
-                embeddings = BertEmbedder().transform(X)
-            except OSError as exc:
-                # Ör. Hugging Face Hub'a erişim yok: diğer sonuçları kaybetmeden atla.
-                logger.warning("BERT atlandı, model indirilemedi: %s", exc)
-                return sorted(results, key=lambda r: r.f1_macro_mean, reverse=True)
-            encode_seconds = time.perf_counter() - started
-            bert = _score("bert", Pipeline(_linear(scale=True)), embeddings, y, cv)
-            results.append(
-                BenchmarkResult(
-                    **{**asdict(bert), "fit_seconds": round(bert.fit_seconds + encode_seconds, 1)}
+    report = BenchmarkReport(
+        n_samples=len(frame),
+        n_classes=len(labels),
+        test_size=test_size,
+        lead_words=lead_words,
+        sources=(
+            {k: int(v) for k, v in frame[SOURCE].value_counts().items()}
+            if SOURCE in frame.columns
+            else {}
+        ),
+    )
+
+    for name in selected:
+        logger.info("Ayrılmış test kümesi: %s", name)
+        started = time.perf_counter()
+        model = _factory(name).fit(train_texts, train_labels)
+        elapsed = time.perf_counter() - started
+        metrics = evaluate_model(
+            model, split.X_test, split.y_test, labels, lead_words=lead_words or DEFAULT_LEAD_WORDS
+        )
+        report.holdout.append(
+            BenchmarkResult(
+                method=name,
+                display_name=DISPLAY_NAMES.get(name, name),
+                accuracy=metrics["accuracy"],
+                f1_macro=metrics["f1_macro"],
+                top2_accuracy=metrics["top2_accuracy"],
+                headline_f1=metrics.get("headline", {}).get("f1_macro"),
+                fit_seconds=round(elapsed, 1),
+            )
+        )
+    report.holdout.sort(key=lambda r: r.f1_macro, reverse=True)
+
+    if cross_source_methods and SOURCE in frame.columns and frame[SOURCE].nunique() > 1:
+        for held_out in sorted(frame[SOURCE].unique()):
+            train = frame[frame[SOURCE] != held_out]
+            test = frame[(frame[SOURCE] == held_out) & frame[LABEL].isin(set(train[LABEL]))]
+            present = sorted(set(test[LABEL]))
+            if len(present) < 2:
+                continue
+            texts, targets = augment_with_leads(train[TEXT], train[LABEL], lead_words)
+            for name in cross_source_methods:
+                logger.info("Görülmemiş kaynak: %s → %s", name, held_out)
+                predicted = _factory(name).fit(texts, targets).predict(test[TEXT])
+                report.cross_source.append(
+                    CrossSourceResult(
+                        method=name,
+                        held_out_source=held_out,
+                        n_test=len(test),
+                        accuracy=round(float(accuracy_score(test[LABEL], predicted)), 4),
+                        f1_macro=round(
+                            float(
+                                f1_score(test[LABEL], predicted, labels=present, average="macro")
+                            ),
+                            4,
+                        ),
+                    )
                 )
-            )
-
-    return sorted(results, key=lambda r: r.f1_macro_mean, reverse=True)
+    return report
 
 
-def _tr(value: float, digits: int = 2) -> str:
-    """Sayıyı Türkçe ondalık ayırıcıyla biçimlendirir: 98.42 -> '98,42'."""
-    return f"{value:.{digits}f}".replace(".", ",")
+def _pct(value: float | None, digits: int = 2) -> str:
+    """Yüzdeyi Türkçe ondalık ayırıcıyla biçimlendirir: 0.9842 -> '%98,42'."""
+    if value is None:
+        return "—"
+    return "%" + f"{value * 100:.{digits}f}".replace(".", ",")
 
 
-def write_report(
-    results: list[BenchmarkResult],
-    output_dir: str | Path,
-    *,
-    folds: int,
-    n_samples: int,
-) -> Path:
+def write_report(report: BenchmarkReport, output_dir: str | Path) -> Path:
     """Sonuçları ``benchmark.md`` ve ``benchmark.json`` olarak kaydeder."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    sources = ", ".join(f"{k} ({v})" for k, v in report.sources.items()) or "tek kaynak"
 
     lines = [
         "# Karşılaştırmalı Değerlendirme (Benchmark)",
         "",
-        f"- **Veri:** {n_samples} benzersiz haber metni, 7 dengeli kategori",
-        f"- **Yöntem:** {folds} katlı katmanlı çapraz doğrulama, sabit tohum ({RANDOM_STATE})",
-        "- **Sınıflandırıcı:** Lojistik Regresyon (tüm yöntemlerde aynı)",
+        f"- **Veri:** {report.n_samples} benzersiz haber, {report.n_classes} kategori",
+        f"- **Kaynaklar:** {sources}",
+        f"- **Bölme:** katmanlı %{int((1 - report.test_size) * 100)} eğitim / "
+        f"%{int(report.test_size * 100)} test, sabit tohum ({RANDOM_STATE})",
+        f"- **Başlık artırımı:** eğitimde uzun haberlerin ilk {report.lead_words} kelimesi",
         f"- **Üretim:** `haberlens benchmark` · {generated}",
         "",
-        "| Sıra | Yöntem | Doğruluk | Makro F1 | Süre (sn) |",
-        "| :-: | --- | :-: | :-: | :-: |",
+        "## 1. Ayrılmış test kümesi",
+        "",
+        "| Sıra | Yöntem | Doğruluk | Makro F1 | İlk-2 doğruluk | Başlık F1¹ | Eğitim (sn) |",
+        "| :-: | --- | :-: | :-: | :-: | :-: | :-: |",
     ]
-    for rank, result in enumerate(results, start=1):
+    for rank, r in enumerate(report.holdout, start=1):
         lines.append(
-            f"| {rank} | {result.display_name} | %{_tr(result.accuracy_mean * 100)} | "
-            f"%{_tr(result.f1_macro_mean * 100)} ± {_tr(result.f1_macro_std * 100)} | "
-            f"{_tr(result.fit_seconds, 1)} |"
+            f"| {rank} | {r.display_name} | {_pct(r.accuracy)} | {_pct(r.f1_macro)} | "
+            f"{_pct(r.top2_accuracy)} | {_pct(r.headline_f1)} | "
+            f"{str(r.fit_seconds).replace('.', ',')} |"
         )
     lines += [
         "",
-        f"> Varsayılan üretim mimarisi: `{DEFAULT_ARCHITECTURE}`. Süre sütunu tüm katmanlar için "
-        "toplam eğitim + tahmin süresidir (BERT için gömme hesaplama süresi dahildir).",
+        f"¹ Uzun test haberlerinin yalnızca ilk {report.lead_words} kelimesi verildiğinde "
+        "(başlık benzeri kısa girdi) makro F1.",
+        "",
+    ]
+
+    if report.cross_source:
+        held_outs = sorted({r.held_out_source for r in report.cross_source})
+        methods = list(dict.fromkeys(r.method for r in report.cross_source))
+        table = {(r.method, r.held_out_source): r for r in report.cross_source}
+        lines += [
+            "## 2. Görülmemiş kaynak testi (leave-one-source-out)",
+            "",
+            "Her sütunda o kaynak eğitimden tamamen çıkarılmış ve model yalnızca diğer "
+            "kaynaklarla eğitilmiştir. Değerler makro F1'dir (yalnızca o kaynakta bulunan "
+            "kategoriler üzerinden).",
+            "",
+            "| Yöntem | " + " | ".join(f"→ {h}" for h in held_outs) + " | Ortalama |",
+            "| --- | " + " | ".join(":-:" for _ in held_outs) + " | :-: |",
+        ]
+        for method in methods:
+            cells = [table[(method, h)].f1_macro for h in held_outs if (method, h) in table]
+            lines.append(
+                f"| {DISPLAY_NAMES.get(method, method)} | "
+                + " | ".join(
+                    _pct(table[(method, h)].f1_macro) if (method, h) in table else "—"
+                    for h in held_outs
+                )
+                + f" | {_pct(float(np.mean(cells)) if cells else None)} |"
+            )
+        lines.append("")
+
+    lines += [
+        f"> Varsayılan üretim mimarisi: `{DEFAULT_ARCHITECTURE}`.",
         "",
     ]
     markdown = output_dir / "benchmark.md"
     markdown.write_text("\n".join(lines), encoding="utf-8")
     (output_dir / "benchmark.json").write_text(
-        json.dumps([asdict(r) for r in results], ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(asdict(report), ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return markdown
