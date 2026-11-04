@@ -8,6 +8,9 @@ haberlens serve --host 0.0.0.0 --port 8000
 
 Etkileşimli dokümantasyon: **`/docs`** (Swagger UI) ve **`/redoc`**.
 
+Desteklenen kategoriler modelle birlikte gelir ve `GET /v1/categories` ile okunur. Varsayılan
+model: Dünya, Ekonomi, Kültür-Sanat, Magazin, Sağlık, Siyaset, Spor, Teknoloji, Yaşam.
+
 ## Kimlik doğrulama
 
 `HABERLENS_API_KEY` tanımlıysa tüm `/v1/*` uç noktaları `X-API-Key` başlığı ister.
@@ -40,15 +43,15 @@ curl -X POST http://localhost:8000/v1/classify \
 ```json
 {
   "label": "Ekonomi",
-  "confidence": 0.9799,
-  "scores": { "Ekonomi": 0.9799, "Magazin": 0.0055, "Yaşam": 0.0036 },
+  "confidence": 0.9836,
+  "scores": { "Ekonomi": 0.9836, "Magazin": 0.0084, "Yaşam": 0.0025 },
   "uncertain": false,
   "keywords": [
-    { "term": "bankası", "weight": 0.4522 },
-    { "term": "merkez", "weight": 0.4136 },
-    { "term": "merkez bankası", "weight": 0.3637 }
+    { "term": "merkez bankası", "weight": 0.5243 },
+    { "term": "bankası", "weight": 0.4096 },
+    { "term": "merkez", "weight": 0.2391 }
   ],
-  "processing_ms": 2.1
+  "processing_ms": 8.1
 }
 ```
 
