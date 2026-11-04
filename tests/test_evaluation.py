@@ -47,3 +47,11 @@ def test_format_report_includes_extended_sections() -> None:
     assert "İlk-2 doğruluk" in report
     assert "kemik" in report
     assert "Başlık benzeri" in report
+
+
+def test_format_percent_uses_turkish_decimal_comma() -> None:
+    from haberlens.evaluation import format_percent
+
+    assert format_percent(0.98421) == "%98,42"
+    assert format_percent(0.5, 1) == "%50,0"
+    assert format_percent(None) == "—"

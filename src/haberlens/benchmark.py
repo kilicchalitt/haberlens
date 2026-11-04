@@ -31,6 +31,7 @@ from sklearn.preprocessing import StandardScaler
 from haberlens.config import DEFAULT_DATA_PATH, RANDOM_STATE
 from haberlens.data import LABEL, SOURCE, TEXT, load_dataset, split_dataset
 from haberlens.evaluation import evaluate_model
+from haberlens.evaluation import format_percent as _pct
 from haberlens.pipelines import ARCHITECTURES, DEFAULT_ARCHITECTURE, MAX_CHARS, build_pipeline
 from haberlens.preprocessing import TurkishTextNormalizer
 from haberlens.training import DEFAULT_LEAD_WORDS, augment_with_leads
@@ -194,13 +195,6 @@ def run_benchmark(
                     )
                 )
     return report
-
-
-def _pct(value: float | None, digits: int = 2) -> str:
-    """Yüzdeyi Türkçe ondalık ayırıcıyla biçimlendirir: 0.9842 -> '%98,42'."""
-    if value is None:
-        return "—"
-    return "%" + f"{value * 100:.{digits}f}".replace(".", ",")
 
 
 def write_report(report: BenchmarkReport, output_dir: str | Path) -> Path:

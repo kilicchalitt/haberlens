@@ -30,6 +30,7 @@ from haberlens.config import (
     DEFAULT_MODEL_PATH,
     DEFAULT_TEXT_COLUMN,
 )
+from haberlens.evaluation import format_percent
 
 logger = logging.getLogger("haberlens")
 
@@ -84,10 +85,9 @@ def cmd_train(args: argparse.Namespace) -> int:
     print("\n" + format_report(result.metrics))
     cv = result.metrics.get("cross_validation")
     if cv:
-        print(
-            f"\n{cv['folds']} katlı çapraz doğrulama (makro F1): "
-            f"%{cv['f1_macro_mean'] * 100:.2f} ± {cv['f1_macro_std'] * 100:.2f}"
-        )
+        mean = format_percent(cv["f1_macro_mean"], 2)
+        std = format_percent(cv["f1_macro_std"], 2).lstrip("%")
+        print(f"\n{cv['folds']} katlı çapraz doğrulama (makro F1): {mean} ± {std}")
     print(f"\nModel kaydedildi → {result.model_path}")
     return 0
 
@@ -140,9 +140,9 @@ def cmd_predict(args: argparse.Namespace) -> int:
             print("   ⚠️  Metin anlamlı içerik barındırmıyor.")
             continue
         flag = "  ⚠️  düşük güven — insan onayı önerilir" if result.uncertain else ""
-        print(f"   → {result.label}  (%{result.confidence * 100:.1f}){flag}")
+        print(f"   → {result.label}  ({format_percent(result.confidence, 1)}){flag}")
         for label, score in list(result.scores.items())[1:]:
-            print(f"     {label:<10} %{score * 100:.1f}")
+            print(f"     {label:<10} {format_percent(score, 1)}")
         if result.keywords:
             print("   Anahtar kelimeler: " + ", ".join(k.term for k in result.keywords))
     return 0
@@ -214,8 +214,8 @@ def cmd_info(args: argparse.Namespace) -> int:
     print(f"  Kategoriler   : {', '.join(metadata.get('labels', []))}")
     print(f"  Veri          : {data.get('file')} ({data.get('n_samples')} kayıt)")
     if metrics:
-        print(f"  Doğruluk      : %{metrics['accuracy'] * 100:.2f}")
-        print(f"  Makro F1      : %{metrics['f1_macro'] * 100:.2f}")
+        print(f"  Doğruluk      : {format_percent(metrics['accuracy'], 2)}")
+        print(f"  Makro F1      : {format_percent(metrics['f1_macro'], 2)}")
     return 0
 
 

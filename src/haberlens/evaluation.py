@@ -14,7 +14,20 @@ from sklearn.metrics import (
     f1_score,
 )
 
-__all__ = ["evaluate_model", "evaluate_predictions", "format_report", "top_k_accuracy"]
+__all__ = [
+    "evaluate_model",
+    "evaluate_predictions",
+    "format_percent",
+    "format_report",
+    "top_k_accuracy",
+]
+
+
+def format_percent(value: float | None, digits: int = 2) -> str:
+    """Oranı Türkçe yüzde biçiminde yazar: ``0.9842`` → ``'%98,42'``."""
+    if value is None:
+        return "—"
+    return "%" + f"{value * 100:.{digits}f}".replace(".", ",")
 
 
 def evaluate_predictions(
@@ -113,11 +126,11 @@ def evaluate_model(
 def format_report(metrics: dict[str, object]) -> str:
     """Metrikleri terminalde okunabilir bir tablo olarak biçimlendirir."""
     lines = [
-        f"Doğruluk (accuracy) : %{metrics['accuracy'] * 100:.2f}",
-        f"Makro F1            : %{metrics['f1_macro'] * 100:.2f}",
+        f"Doğruluk (accuracy) : {format_percent(metrics['accuracy'], 2)}",
+        f"Makro F1            : {format_percent(metrics['f1_macro'], 2)}",
     ]
     if "top2_accuracy" in metrics:
-        lines.append(f"İlk-2 doğruluk      : %{metrics['top2_accuracy'] * 100:.2f}")
+        lines.append(f"İlk-2 doğruluk      : {format_percent(metrics['top2_accuracy'], 2)}")
     lines += [
         "",
         f"{'Kategori':<13} {'Kesinlik':>9} {'Duyarlılık':>11} {'F1':>7} {'Örnek':>7}",
@@ -132,14 +145,15 @@ def format_report(metrics: dict[str, object]) -> str:
         lines += ["", "Kaynak bazında:"]
         for name, row in metrics["per_source"].items():
             lines.append(
-                f"  {name:<12} n={row['n']:<6d} doğruluk=%{row['accuracy'] * 100:.2f} "
-                f"makro F1=%{row['f1_macro'] * 100:.2f}"
+                f"  {name:<12} n={row['n']:<6d} doğruluk={format_percent(row['accuracy'], 2)} "
+                f"makro F1={format_percent(row['f1_macro'], 2)}"
             )
     if metrics.get("headline"):
         row = metrics["headline"]
         lines += [
             "",
             f"Başlık benzeri kısa metin (ilk {row['lead_words']} kelime, n={row['n']}): "
-            f"doğruluk=%{row['accuracy'] * 100:.2f} makro F1=%{row['f1_macro'] * 100:.2f}",
+            f"doğruluk={format_percent(row['accuracy'], 2)} "
+            f"makro F1={format_percent(row['f1_macro'], 2)}",
         ]
     return "\n".join(lines)
