@@ -8,7 +8,7 @@
 | **Kategoriler** | Ekonomi, Magazin, Sağlık, Siyaset, Spor, Teknoloji, Yaşam |
 | **Mimari** | Kelime (1-2 gram) + karakter (2-5 gram) TF-IDF → Lojistik Regresyon (C=10) |
 | **Boyut** | ~4,5 MB (`.joblib`, sıkıştırılmış) |
-| **Donanım** | Yalnızca CPU; tekil tahmin ~2 ms |
+| **Donanım** | Yalnızca CPU; tekil tahmin ~2-3 ms, toplu işlemde saniyede ~10.000 metin |
 | **Lisans** | MIT |
 | **Geliştiren** | [Halit Kılıç](https://github.com/kilicchalitt) |
 
