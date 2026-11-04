@@ -57,6 +57,7 @@ def create_app(
         if app.state.classifier is None:
             try:
                 app.state.classifier = NewsClassifier.load(settings.model_path)
+                app.state.classifier.warmup()
                 logger.info("Model yüklendi: %s", settings.model_path)
             except ModelLoadError as exc:
                 logger.error("Model yüklenemedi: %s", exc)

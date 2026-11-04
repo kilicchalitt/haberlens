@@ -148,6 +148,15 @@ class NewsClassifier:
             )
         return predictions
 
+    def warmup(self) -> None:
+        """Açıklama için gereken öznitelik adlarını önceden hazırlar.
+
+        Büyük modellerde ilk açıklamalı tahmin, yüz binlerce öznitelik adının
+        oluşturulması nedeniyle ~1 sn sürer. Servis başlarken bir kez çağrılarak
+        bu gecikmenin ilk kullanıcıya yansıması önlenir.
+        """
+        self.predict("haber", explain=True)
+
     def predict_labels(self, texts: Sequence[str]) -> list[str]:
         """Yalnızca etiketleri döndüren hızlı yol (değerlendirme için)."""
         return [str(label) for label in self._pipeline.predict(list(texts))]

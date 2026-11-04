@@ -92,3 +92,10 @@ def test_load_uses_environment_variable(
 ) -> None:
     monkeypatch.setenv("HABERLENS_MODEL_PATH", str(trained_model_path))
     assert NewsClassifier.load().labels
+
+
+def test_warmup_prepares_explanations(trained_model_path: Path) -> None:
+    clf = NewsClassifier.load(trained_model_path)
+    assert "_explainable_features" not in clf.__dict__
+    clf.warmup()
+    assert "_explainable_features" in clf.__dict__
