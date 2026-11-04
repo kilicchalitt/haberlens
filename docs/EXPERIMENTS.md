@@ -14,9 +14,9 @@ veriyordu. Aynı model **hiç görmediği yayın organlarının** haberleriyle s
 | --- | --- | :-: |
 | haberlens (v1.0 verisi) | haberlens test bölmesi | %98,5 |
 | haberlens | Kemik 42K (7 ortak kategori) | **%76,5** |
-| haberlens | TTC-3600 (5 ortak kategori) | %84,8 |
+| haberlens | TTC-3600 (5 ortak kategori) | %85,2 |
 
-Sonuç: v1.0'ın yüksek skoru veri setine özgüydü; gerçek dünyada başka bir sitenin
+(v1.0 sürümünün kendi kodu ve mimarisiyle ölçülmüştür.) Sonuç: v1.0'ın yüksek skoru veri setine özgüydü; gerçek dünyada başka bir sitenin
 haberinde başarı belirgin şekilde düşüyordu. Çözüm daha çok ve daha çeşitli veriydi.
 
 ## 2. Veri: üç kaynaklı derlem
