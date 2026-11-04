@@ -66,8 +66,10 @@ def create_app(
         title="HaberLens API",
         version=__version__,
         description=(
-            "Türkçe haber metinlerini **Ekonomi, Magazin, Sağlık, Siyaset, Spor, Teknoloji, "
-            "Yaşam** kategorilerine ayıran, kararını anahtar kelimelerle açıklayan REST API."
+            "Türkçe haber başlıklarını ve metinlerini **Dünya, Ekonomi, Kültür-Sanat, Magazin, "
+            "Sağlık, Siyaset, Spor, Teknoloji, Yaşam** kategorilerine ayıran, kararını anahtar "
+            "kelimelerle açıklayan REST API. Desteklenen kategoriler `/v1/categories` "
+            "uç noktasından okunur."
         ),
         contact={"name": "Halit Kılıç", "url": "https://github.com/kilicchalitt"},
         license_info={"name": "MIT"},
