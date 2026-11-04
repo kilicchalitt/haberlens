@@ -78,3 +78,31 @@ def test_summarize(sample_csv: Path) -> None:
     summary = summarize(load_dataset(sample_csv))
     assert summary["n_classes"] == 7
     assert sum(summary["class_distribution"].values()) == summary["n_samples"]
+
+
+def test_source_column_is_kept_and_used_for_stratification(tmp_path: Path) -> None:
+    rows = [(f"spor metni {i}", "Spor", "a" if i % 2 else "b") for i in range(40)]
+    rows += [(f"ekonomi metni {i}", "Ekonomi", "a" if i % 2 else "b") for i in range(40)]
+    path = tmp_path / "corpus.csv"
+    pd.DataFrame(rows, columns=["HABERLER", "ETIKET", "KAYNAK"]).to_csv(path, index=False)
+
+    frame = load_dataset(path)
+    assert list(frame.columns) == ["text", "label", "source"]
+    split = split_dataset(frame, test_size=0.25)
+    assert split.source_test is not None
+    assert split.source_test.value_counts().to_dict() == {"a": 10, "b": 10}
+    assert summarize(frame)["source_distribution"] == {"a": 40, "b": 40}
+
+
+def test_source_column_is_optional(sample_csv: Path) -> None:
+    frame = load_dataset(sample_csv)
+    assert "source" not in frame.columns
+    assert split_dataset(frame).source_train is None
+
+
+def test_missing_default_corpus_suggests_build(monkeypatch: pytest.MonkeyPatch) -> None:
+    from haberlens import data
+
+    monkeypatch.setattr(data, "DEFAULT_DATA_PATH", Path("yok/news_corpus.csv"))
+    with pytest.raises(DatasetError, match="haberlens data build"):
+        data.load_dataset(Path("yok/news_corpus.csv"))

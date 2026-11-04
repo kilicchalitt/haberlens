@@ -12,10 +12,12 @@ from pathlib import Path
 
 # Yollar çalışma dizinine göredir; böylece paket site-packages'a kurulduğunda da
 # (Docker, pip install) proje kökünden çalıştırılan komutlar doğru dosyaları bulur.
-DEFAULT_DATA_PATH = Path(os.getenv("HABERLENS_DATA_PATH", "data/raw/turkish_news.csv"))
+# Varsayılan eğitim verisi, `haberlens data build` ile oluşturulan çok kaynaklı derlemdir.
+DEFAULT_DATA_PATH = Path(os.getenv("HABERLENS_DATA_PATH", "data/processed/news_corpus.csv"))
 DEFAULT_MODEL_PATH = Path(os.getenv("HABERLENS_MODEL_PATH", "models/haberlens.joblib"))
 DEFAULT_TEXT_COLUMN = "HABERLER"
 DEFAULT_LABEL_COLUMN = "ETIKET"
+DEFAULT_SOURCE_COLUMN = "KAYNAK"
 RANDOM_STATE = 42
 
 

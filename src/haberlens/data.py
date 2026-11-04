@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from haberlens.config import (
     DEFAULT_DATA_PATH,
     DEFAULT_LABEL_COLUMN,
+    DEFAULT_SOURCE_COLUMN,
     DEFAULT_TEXT_COLUMN,
     RANDOM_STATE,
 )
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 TEXT = "text"
 LABEL = "label"
+SOURCE = "source"
 
 
 class DatasetError(ValueError):
@@ -36,6 +38,8 @@ class DatasetSplit:
     X_test: pd.Series
     y_train: pd.Series
     y_test: pd.Series
+    source_train: pd.Series | None = None
+    source_test: pd.Series | None = None
 
 
 def load_dataset(
@@ -45,6 +49,7 @@ def load_dataset(
     label_column: str = DEFAULT_LABEL_COLUMN,
     labels: list[str] | None = None,
     min_samples_per_class: int = 10,
+    source_column: str | None = DEFAULT_SOURCE_COLUMN,
 ) -> pd.DataFrame:
     """CSV dosyasını okuyup temizlenmiş ``text`` / ``label`` sütunlu bir tablo döndürür.
 
@@ -54,13 +59,19 @@ def load_dataset(
         label_column: Kategori etiketini içeren sütunun adı.
         labels: Verilirse yalnızca bu kategoriler kullanılır.
         min_samples_per_class: Bir kategorinin kabul edilmesi için gereken en az örnek.
+        source_column: Kaydın hangi kaynaktan geldiğini belirten isteğe bağlı sütun.
+            Dosyada varsa ``source`` olarak korunur ve kaynak bazlı değerlendirmede
+            kullanılır; yoksa yok sayılır.
 
     Raises:
         DatasetError: Dosya yoksa, sütunlar eksikse veya veri yetersizse.
     """
     path = Path(path)
     if not path.is_file():
-        raise DatasetError(f"Veri dosyası bulunamadı: {path}")
+        hint = ""
+        if path == Path(DEFAULT_DATA_PATH):
+            hint = " Önce `haberlens data build` ile eğitim derlemini oluşturun."
+        raise DatasetError(f"Veri dosyası bulunamadı: {path}.{hint}")
 
     frame = pd.read_csv(path, encoding="utf-8")
     missing = {text_column, label_column} - set(frame.columns)
@@ -69,11 +80,14 @@ def load_dataset(
             f"Eksik sütun(lar): {sorted(missing)}. Mevcut sütunlar: {list(frame.columns)}"
         )
 
-    frame = frame[[text_column, label_column]].rename(
-        columns={text_column: TEXT, label_column: LABEL}
-    )
+    columns = {text_column: TEXT, label_column: LABEL}
+    if source_column and source_column in frame.columns:
+        columns[source_column] = SOURCE
+    frame = frame[list(columns)].rename(columns=columns)
     frame[TEXT] = frame[TEXT].astype("string").str.strip()
     frame[LABEL] = frame[LABEL].astype("string").str.strip()
+    if SOURCE in frame.columns:
+        frame[SOURCE] = frame[SOURCE].fillna("bilinmiyor").astype("string")
 
     initial = len(frame)
     frame = frame.dropna()
@@ -99,7 +113,8 @@ def load_dataset(
     if counts.size < 2:
         raise DatasetError("Sınıflandırma için en az iki farklı kategori gereklidir.")
 
-    return frame.reset_index(drop=True).astype({TEXT: str, LABEL: str})
+    dtypes = dict.fromkeys(frame.columns, str)
+    return frame.reset_index(drop=True).astype(dtypes)
 
 
 def split_dataset(
@@ -108,24 +123,43 @@ def split_dataset(
     test_size: float = 0.2,
     random_state: int = RANDOM_STATE,
 ) -> DatasetSplit:
-    """Sınıf oranlarını koruyarak (stratified) eğitim/test ayrımı yapar."""
-    X_train, X_test, y_train, y_test = train_test_split(
-        frame[TEXT],
-        frame[LABEL],
-        test_size=test_size,
-        random_state=random_state,
-        stratify=frame[LABEL],
+    """Sınıf oranlarını koruyarak (stratified) eğitim/test ayrımı yapar.
+
+    Kaynak sütunu varsa katmanlama kategori × kaynak kombinasyonuna göre yapılır;
+    böylece her kaynak test kümesinde eğitimdeki oranıyla temsil edilir.
+    """
+    strata = frame[LABEL]
+    if SOURCE in frame.columns:
+        combined = frame[LABEL] + "|" + frame[SOURCE]
+        if combined.value_counts().min() >= 2:
+            strata = combined
+    train_idx, test_idx = train_test_split(
+        frame.index, test_size=test_size, random_state=random_state, stratify=strata
     )
-    return DatasetSplit(X_train, X_test, y_train, y_test)
+    train, test = frame.loc[train_idx], frame.loc[test_idx]
+    has_source = SOURCE in frame.columns
+    return DatasetSplit(
+        train[TEXT],
+        test[TEXT],
+        train[LABEL],
+        test[LABEL],
+        train[SOURCE] if has_source else None,
+        test[SOURCE] if has_source else None,
+    )
 
 
 def summarize(frame: pd.DataFrame) -> dict[str, object]:
     """Veri seti hakkında raporlamaya uygun özet istatistikler üretir."""
     lengths = frame[TEXT].str.len()
-    return {
+    summary: dict[str, object] = {
         "n_samples": len(frame),
         "n_classes": int(frame[LABEL].nunique()),
         "class_distribution": {k: int(v) for k, v in frame[LABEL].value_counts().items()},
         "mean_text_length": round(float(lengths.mean()), 1),
         "max_text_length": int(lengths.max()),
     }
+    if SOURCE in frame.columns:
+        summary["source_distribution"] = {
+            k: int(v) for k, v in frame[SOURCE].value_counts().items()
+        }
+    return summary
