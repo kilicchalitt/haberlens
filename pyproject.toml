@@ -88,4 +88,9 @@ markers = ["slow: uzun süren testler (tam veri setiyle eğitim)"]
 
 [tool.coverage.run]
 source = ["haberlens"]
-omit = ["src/haberlens/embeddings.py"]
+omit = ["*/haberlens/embeddings.py", "*/haberlens/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = ["if __name__ == .__main__.:"]
