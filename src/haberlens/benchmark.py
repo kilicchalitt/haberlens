@@ -123,6 +123,11 @@ def run_benchmark(
     return sorted(results, key=lambda r: r.f1_macro_mean, reverse=True)
 
 
+def _tr(value: float, digits: int = 2) -> str:
+    """Sayıyı Türkçe ondalık ayırıcıyla biçimlendirir: 98.42 -> '98,42'."""
+    return f"{value:.{digits}f}".replace(".", ",")
+
+
 def write_report(
     results: list[BenchmarkResult],
     output_dir: str | Path,
@@ -148,9 +153,9 @@ def write_report(
     ]
     for rank, result in enumerate(results, start=1):
         lines.append(
-            f"| {rank} | {result.display_name} | %{result.accuracy_mean * 100:.2f} | "
-            f"%{result.f1_macro_mean * 100:.2f} ± {result.f1_macro_std * 100:.2f} | "
-            f"{result.fit_seconds} |"
+            f"| {rank} | {result.display_name} | %{_tr(result.accuracy_mean * 100)} | "
+            f"%{_tr(result.f1_macro_mean * 100)} ± {_tr(result.f1_macro_std * 100)} | "
+            f"{_tr(result.fit_seconds, 1)} |"
         )
     lines += [
         "",

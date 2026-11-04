@@ -18,6 +18,7 @@ def test_report_files(sample_csv: Path, tmp_path: Path) -> None:
     report = write_report(results, tmp_path, folds=2, n_samples=420)
     text = report.read_text(encoding="utf-8")
     assert "| 1 | TF-IDF |" in text
+    assert "%" in text and "," in text  # Türkçe ondalık biçimi
     assert json.loads((tmp_path / "benchmark.json").read_text())[0]["method"] == "tfidf"
 
 
