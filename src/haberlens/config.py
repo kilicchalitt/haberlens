@@ -10,10 +10,10 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-DEFAULT_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "turkish_news.csv"
-DEFAULT_MODEL_PATH = PROJECT_ROOT / "models" / "haberlens.joblib"
+# Yollar çalışma dizinine göredir; böylece paket site-packages'a kurulduğunda da
+# (Docker, pip install) proje kökünden çalıştırılan komutlar doğru dosyaları bulur.
+DEFAULT_DATA_PATH = Path(os.getenv("HABERLENS_DATA_PATH", "data/raw/turkish_news.csv"))
+DEFAULT_MODEL_PATH = Path(os.getenv("HABERLENS_MODEL_PATH", "models/haberlens.joblib"))
 DEFAULT_TEXT_COLUMN = "HABERLER"
 DEFAULT_LABEL_COLUMN = "ETIKET"
 RANDOM_STATE = 42
@@ -34,7 +34,7 @@ class Settings:
     """Çalışma zamanı ayarları."""
 
     model_path: Path = field(
-        default_factory=lambda: Path(os.getenv("HABERLENS_MODEL_PATH", str(DEFAULT_MODEL_PATH)))
+        default_factory=lambda: Path(os.getenv("HABERLENS_MODEL_PATH", "models/haberlens.joblib"))
     )
     api_key: str | None = field(default_factory=lambda: os.getenv("HABERLENS_API_KEY") or None)
     max_batch_size: int = field(default_factory=lambda: _env_int("HABERLENS_MAX_BATCH_SIZE", 256))
