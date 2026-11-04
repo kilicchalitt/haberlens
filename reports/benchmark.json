@@ -1,0 +1,50 @@
+[
+  {
+    "method": "hybrid",
+    "display_name": "**HaberLens Hybrid** (kelime + karakter)",
+    "accuracy_mean": 0.9842,
+    "f1_macro_mean": 0.9841,
+    "f1_macro_std": 0.0032,
+    "fit_seconds": 35.8
+  },
+  {
+    "method": "char",
+    "display_name": "Karakter n-gram",
+    "accuracy_mean": 0.9822,
+    "f1_macro_mean": 0.9821,
+    "f1_macro_std": 0.0032,
+    "fit_seconds": 31.8
+  },
+  {
+    "method": "tfidf",
+    "display_name": "TF-IDF",
+    "accuracy_mean": 0.9688,
+    "f1_macro_mean": 0.9687,
+    "f1_macro_std": 0.0045,
+    "fit_seconds": 16.5
+  },
+  {
+    "method": "bow",
+    "display_name": "Bag-of-Words",
+    "accuracy_mean": 0.9542,
+    "f1_macro_mean": 0.9541,
+    "f1_macro_std": 0.0043,
+    "fit_seconds": 8.9
+  },
+  {
+    "method": "word2vec",
+    "display_name": "Word2Vec (ortalama)",
+    "accuracy_mean": 0.8681,
+    "f1_macro_mean": 0.8682,
+    "f1_macro_std": 0.0079,
+    "fit_seconds": 39.9
+  },
+  {
+    "method": "bigram",
+    "display_name": "N-Gram (bigram)",
+    "accuracy_mean": 0.8258,
+    "f1_macro_mean": 0.8346,
+    "f1_macro_std": 0.0119,
+    "fit_seconds": 24.2
+  }
+]
