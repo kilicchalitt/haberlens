@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "haberlens"
+version = "1.0.0"
+description = "Türkçe haber metinleri için üretime hazır, açıklanabilir metin sınıflandırma servisi."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Halit Kılıç", email = "kilichalit103@gmail.com" }]
+keywords = ["nlp", "turkish", "text-classification", "news", "machine-learning", "fastapi"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: Turkish",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+api = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.5",
+]
+embeddings = [
+  "gensim>=4.3",
+  "torch>=2.1",
+  "transformers>=4.38",
+]
+dev = [
+  "haberlens[api]",
+  "httpx>=0.27",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+haberlens = "haberlens.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kilicchalitt/haberlens"
+Repository = "https://github.com/kilicchalitt/haberlens"
+Issues = "https://github.com/kilicchalitt/haberlens/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+haberlens = ["api/static/*", "py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # Türkçe karakterler bilinçli olarak kullanılıyor
+
+[tool.ruff.lint.per-file-ignores]
+"src/haberlens/api/app.py" = ["B008"]  # FastAPI Depends() kalıbı
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["slow: uzun süren testler (tam veri setiyle eğitim)"]
+
+[tool.coverage.run]
+source = ["haberlens"]
+omit = ["src/haberlens/embeddings.py"]
