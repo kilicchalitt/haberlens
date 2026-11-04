@@ -115,3 +115,10 @@ def test_openapi_schema(client: TestClient) -> None:
     schema = client.get("/openapi.json").json()
     assert schema["info"]["title"] == "HaberLens API"
     assert "/v1/classify/batch" in schema["paths"]
+
+
+def test_web_ui_is_served(client: TestClient) -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "HaberLens" in response.text
