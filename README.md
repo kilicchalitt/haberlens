@@ -301,24 +301,10 @@ REST service with optional API-key auth, and a zero-dependency web UI, packaged 
 Docker and tested in CI across Python 3.10–3.13. A reproducible benchmark compares
 Bag-of-Words, TF-IDF, word/character n-grams and Word2Vec, with optional frozen Turkish BERT.
 
-## 👤 Geliştirici
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/kilicchalitt">
-        <img src="https://github.com/kilicchalitt.png" width="96" alt="Halit Kılıç"><br>
-        <b>Halit Kılıç</b>
-      </a><br>
-      <sub>NLP · Makine Öğrenmesi · Python</sub>
-    </td>
-  </tr>
-</table>
-
-Projeyi faydalı bulduysanız ⭐ vererek destek olabilirsiniz. Soru ve önerileriniz için
-[issue açabilirsiniz](https://github.com/kilicchalitt/haberlens/issues).
-
 ## 📄 Lisans ve Atıf
 
 [MIT](LICENSE) lisansı ile dağıtılmaktadır. Akademik çalışmalarda atıf için
 [`CITATION.cff`](CITATION.cff) dosyasını kullanabilirsiniz (GitHub'daki *"Cite this repository"* butonu).
+
+Projeyi faydalı bulduysanız ⭐ vererek destek olabilirsiniz. Soru ve önerileriniz için
+[issue açabilirsiniz](https://github.com/kilicchalitt/haberlens/issues).
