@@ -301,10 +301,26 @@ REST service with optional API-key auth, and a zero-dependency web UI, packaged 
 Docker and tested in CI across Python 3.10–3.13. A reproducible benchmark compares
 Bag-of-Words, TF-IDF, word/character n-grams and Word2Vec, with optional frozen Turkish BERT.
 
+Developed and maintained by **Halit Kılıç** ([@kilicchalitt](https://github.com/kilicchalitt)).
+
+## 👤 Geliştirici
+
+**Halit Kılıç** · Doğal Dil İşleme · Makine Öğrenmesi · Python
+
+[![GitHub](https://img.shields.io/badge/GitHub-kilicchalitt-181717?logo=github&logoColor=white)](https://github.com/kilicchalitt)
+
+HaberLens, Halit Kılıç tarafından geliştirilmekte ve sürdürülmektedir.
+
+| Konu | Kanal |
+| --- | --- |
+| Hata bildirimi ve özellik önerisi | [GitHub Issues](https://github.com/kilicchalitt/haberlens/issues/new/choose) |
+| Güvenlik açığı bildirimi | [Güvenlik politikası](SECURITY.md) |
+| Katkıda bulunma | [Katkı rehberi](CONTRIBUTING.md) |
+
+Projeyi faydalı bulduysanız ⭐ vererek destek olabilirsiniz.
+
 ## 📄 Lisans ve Atıf
 
-[MIT](LICENSE) lisansı ile dağıtılmaktadır. Akademik çalışmalarda atıf için
-[`CITATION.cff`](CITATION.cff) dosyasını kullanabilirsiniz (GitHub'daki *"Cite this repository"* butonu).
-
-Projeyi faydalı bulduysanız ⭐ vererek destek olabilirsiniz. Soru ve önerileriniz için
-[issue açabilirsiniz](https://github.com/kilicchalitt/haberlens/issues).
+[MIT](LICENSE) lisansı ile dağıtılmaktadır. © 2026 Halit Kılıç.
+Akademik çalışmalarda atıf için [`CITATION.cff`](CITATION.cff) dosyasını kullanabilirsiniz
+(GitHub'daki *"Cite this repository"* butonu).
