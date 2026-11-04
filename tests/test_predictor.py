@@ -14,7 +14,7 @@ def classifier(trained_model_path: Path) -> NewsClassifier:
 
 def test_labels_and_metadata(classifier: NewsClassifier) -> None:
     assert len(classifier.labels) == 7
-    assert classifier.metadata["architecture"] == "hybrid"
+    assert classifier.metadata["architecture"] == "ensemble"
 
 
 @pytest.mark.parametrize(
@@ -73,7 +73,10 @@ def test_invalid_inputs(classifier: NewsClassifier, trained_model_path: Path) ->
         NewsClassifier.load(trained_model_path, confidence_threshold=1.5)
 
 
-@pytest.mark.parametrize(("architecture", "has_keywords"), [("tfidf", True), ("char", False)])
+@pytest.mark.parametrize(
+    ("architecture", "has_keywords"),
+    [("tfidf", True), ("char", False), ("svm", True), ("nb", False), ("ensemble", True)],
+)
 def test_explanations_for_other_architectures(architecture: str, has_keywords: bool) -> None:
     texts = ["Takım maçı kazandı", "Takım gol attı", "Faiz arttı", "Borsa düştü"] * 3
     labels = ["Spor", "Spor", "Ekonomi", "Ekonomi"] * 3

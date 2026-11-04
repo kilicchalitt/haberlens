@@ -4,10 +4,19 @@ Her mimari, ön işlemeden sınıflandırıcıya kadar tek bir scikit-learn
 ``Pipeline`` nesnesidir. Böylece model tek dosya olarak kaydedilir, yüklenir ve
 sürümlenir.
 
-Varsayılan mimari ``hybrid``: kelime (1-2 gram) ve karakter (2-5 gram) TF-IDF
-özniteliklerini birleştirir. Türkçe sondan eklemeli bir dil olduğu için
-karakter n-gramları ``ekonomi / ekonomik / ekonomide`` gibi çekimli biçimleri
-ortak köklerinden yakalar; kelime n-gramları ise okunabilir açıklamalar üretir.
+Varsayılan mimari ``ensemble``: kelime (1-2 gram) ve karakter (2-5 gram) TF-IDF
+özniteliklerini ortak kullanan üç farklı sınıflandırıcının ağırlıklı olasılık
+ortalamasıdır (yumuşak oylama):
+
+* **Lojistik Regresyon** — iyi kalibre olasılıklar ve okunabilir açıklamalar
+* **Doğrusal SVM** (sigmoid ile kalibre) — yüksek boyutlu seyrek metinde güçlü sınır
+* **Complement Naive Bayes** — farklı tümevarımsal varsayım; dengesiz sınıflarda sağlam
+
+Üç model farklı türde hatalar yaptığı için birleşimleri, eğitimde görülmemiş
+kaynaklardan gelen haberlerde tek modellerden belirgin şekilde daha iyi
+genelleşir (bkz. ``reports/benchmark.md``). Karakter n-gramları Türkçenin
+sondan eklemeli yapısını (``ekonomi / ekonomik / ekonomide``) kök bulucuya
+gerek kalmadan yakalar.
 """
 
 from __future__ import annotations
@@ -15,86 +24,115 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import VotingClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import ComplementNB
 from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.svm import LinearSVC
 
 from haberlens.config import RANDOM_STATE
 from haberlens.preprocessing import TurkishTextNormalizer
 
-__all__ = ["ARCHITECTURES", "DEFAULT_ARCHITECTURE", "Architecture", "build_pipeline"]
+__all__ = [
+    "ARCHITECTURES",
+    "DEFAULT_ARCHITECTURE",
+    "ENSEMBLE_WEIGHTS",
+    "MAX_CHARS",
+    "Architecture",
+    "build_pipeline",
+]
 
-DEFAULT_ARCHITECTURE = "hybrid"
+DEFAULT_ARCHITECTURE = "ensemble"
+
+#: Uzun haberlerde yalnızca başlık + giriş bölümü kullanılır (bkz. docs/EXPERIMENTS.md).
+MAX_CHARS = 1500
+
+#: Yumuşak oylama ağırlıkları: Lojistik Regresyon, SVM, Naive Bayes.
+ENSEMBLE_WEIGHTS = (1.0, 1.0, 0.5)
 
 
-def _classifier(c: float = 10.0) -> LogisticRegression:
-    return LogisticRegression(C=c, max_iter=3000, random_state=RANDOM_STATE)
+# ------------------------------------------------------------------------- yapı taşları
+def _normalizer() -> TurkishTextNormalizer:
+    return TurkishTextNormalizer(max_chars=MAX_CHARS)
 
 
-def _word_tfidf(ngram_range: tuple[int, int] = (1, 1)) -> TfidfVectorizer:
-    return TfidfVectorizer(ngram_range=ngram_range, sublinear_tf=True, min_df=1)
+def _word_tfidf(ngram_range: tuple[int, int] = (1, 1), min_df: int = 1) -> TfidfVectorizer:
+    return TfidfVectorizer(
+        ngram_range=ngram_range, sublinear_tf=True, min_df=min_df, max_features=300_000
+    )
 
 
 def _char_tfidf() -> TfidfVectorizer:
-    return TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True, min_df=2)
-
-
-def _bow() -> Pipeline:
-    return Pipeline(
-        [
-            ("normalize", TurkishTextNormalizer()),
-            ("features", CountVectorizer()),
-            ("classifier", _classifier(c=1.0)),
-        ]
+    return TfidfVectorizer(
+        analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True, min_df=3, max_features=300_000
     )
+
+
+def _hybrid_features() -> FeatureUnion:
+    return FeatureUnion([("word", _word_tfidf((1, 2), min_df=2)), ("char", _char_tfidf())])
+
+
+def _logistic(c: float = 10.0) -> LogisticRegression:
+    return LogisticRegression(C=c, max_iter=3000, random_state=RANDOM_STATE)
+
+
+def _calibrated_svm() -> CalibratedClassifierCV:
+    return CalibratedClassifierCV(
+        LinearSVC(C=0.5, class_weight="balanced", random_state=RANDOM_STATE),
+        method="sigmoid",
+        cv=3,
+        ensemble=False,  # tek bir SVM + kalibratör: modeli küçük tutar
+    )
+
+
+def _naive_bayes() -> ComplementNB:
+    return ComplementNB(alpha=0.1)
+
+
+def _pipeline(features: object, classifier: object) -> Pipeline:
+    return Pipeline(
+        [("normalize", _normalizer()), ("features", features), ("classifier", classifier)]
+    )
+
+
+# --------------------------------------------------------------------------- mimariler
+def _bow() -> Pipeline:
+    return _pipeline(CountVectorizer(max_features=300_000), _logistic(c=1.0))
 
 
 def _tfidf() -> Pipeline:
-    return Pipeline(
-        [
-            ("normalize", TurkishTextNormalizer()),
-            ("features", _word_tfidf()),
-            ("classifier", _classifier()),
-        ]
-    )
+    return _pipeline(_word_tfidf(), _logistic())
 
 
 def _bigram() -> Pipeline:
-    return Pipeline(
-        [
-            ("normalize", TurkishTextNormalizer()),
-            ("features", TfidfVectorizer(ngram_range=(2, 2), sublinear_tf=True)),
-            ("classifier", _classifier()),
-        ]
-    )
+    return _pipeline(_word_tfidf((2, 2)), _logistic())
 
 
 def _char() -> Pipeline:
-    return Pipeline(
-        [
-            ("normalize", TurkishTextNormalizer()),
-            ("features", _char_tfidf()),
-            ("classifier", _classifier()),
-        ]
-    )
+    return _pipeline(_char_tfidf(), _logistic())
 
 
 def _hybrid() -> Pipeline:
-    return Pipeline(
-        [
-            ("normalize", TurkishTextNormalizer()),
-            (
-                "features",
-                FeatureUnion(
-                    [
-                        ("word", _word_tfidf(ngram_range=(1, 2))),
-                        ("char", _char_tfidf()),
-                    ]
-                ),
-            ),
-            ("classifier", _classifier()),
-        ]
+    return _pipeline(_hybrid_features(), _logistic())
+
+
+def _svm() -> Pipeline:
+    return _pipeline(_hybrid_features(), _calibrated_svm())
+
+
+def _nb() -> Pipeline:
+    return _pipeline(_hybrid_features(), _naive_bayes())
+
+
+def _ensemble() -> Pipeline:
+    voting = VotingClassifier(
+        estimators=[("lr", _logistic()), ("svm", _calibrated_svm()), ("nb", _naive_bayes())],
+        voting="soft",
+        weights=list(ENSEMBLE_WEIGHTS),
     )
+    return _pipeline(_hybrid_features(), voting)
 
 
 @dataclass(frozen=True)
@@ -117,6 +155,16 @@ ARCHITECTURES: dict[str, Architecture] = {
             "hybrid",
             "Kelime (1-2 gram) + karakter (2-5 gram) TF-IDF + Lojistik Regresyon",
             _hybrid,
+        ),
+        Architecture(
+            "svm", "Kelime + karakter TF-IDF + Doğrusal SVM (sigmoid kalibrasyonlu)", _svm
+        ),
+        Architecture("nb", "Kelime + karakter TF-IDF + Complement Naive Bayes", _nb),
+        Architecture(
+            "ensemble",
+            "Kelime + karakter TF-IDF + ağırlıklı topluluk "
+            "(Lojistik Regresyon, Doğrusal SVM, Complement Naive Bayes)",
+            _ensemble,
         ),
     )
 }

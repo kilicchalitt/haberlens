@@ -47,7 +47,7 @@ def test_categories(client: TestClient) -> None:
 
 def test_model_info(client: TestClient) -> None:
     body = client.get("/v1/model").json()
-    assert body["architecture"] == "hybrid"
+    assert body["architecture"] == "ensemble"
     assert "f1_macro" in body["metrics"]
 
 

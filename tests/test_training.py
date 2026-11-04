@@ -21,7 +21,7 @@ def test_training_produces_artifact_and_metrics(sample_csv: Path, tmp_path: Path
     assert len(metrics["confusion_matrix"]["matrix"]) == 7
 
     sidecar = json.loads(output.with_suffix(".json").read_text(encoding="utf-8"))
-    assert sidecar["architecture"] == "hybrid"
+    assert sidecar["architecture"] == "ensemble"
     assert len(sidecar["data"]["sha256"]) == 64
 
 

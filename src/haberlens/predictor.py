@@ -167,10 +167,30 @@ class NewsClassifier:
             return None
         return names, mask
 
+    @cached_property
+    def _linear_coef(self) -> np.ndarray | None:
+        """Açıklama için kullanılacak doğrusal model ağırlıklarını bulur.
+
+        Tek bir doğrusal model, topluluk içindeki Lojistik Regresyon veya kalibre
+        edilmiş SVM'nin iç modeli desteklenir. Naive Bayes gibi doğrusal ağırlığı
+        olmayan modeller için ``None`` döner ve açıklama üretilmez.
+        """
+        classifier = self._pipeline.steps[-1][1]
+        candidates = [classifier]
+        named = getattr(classifier, "named_estimators_", None)
+        if named is not None:
+            candidates = [named[key] for key in ("lr", "svm") if key in named]
+        for candidate in candidates:
+            coef = getattr(candidate, "coef_", None)
+            if coef is None and hasattr(candidate, "calibrated_classifiers_"):
+                coef = getattr(candidate.calibrated_classifiers_[0].estimator, "coef_", None)
+            if coef is not None:
+                return np.asarray(coef)
+        return None
+
     def _explain(self, features: Any, row: int, class_index: int, limit: int) -> list[Keyword]:
         explainable = self._explainable_features
-        classifier = self._pipeline.steps[-1][1]
-        coef = getattr(classifier, "coef_", None)
+        coef = self._linear_coef
         if explainable is None or coef is None:
             return []
 
