@@ -58,4 +58,25 @@ def test_transformer_is_pipeline_compatible() -> None:
     normalizer = TurkishTextNormalizer()
     output = normalizer.fit_transform(["GALATASARAY'ın maçı", "Apple yeni iPhone'u tanıttı"])
     assert output == ["galatasaray maçı", "apple yeni iphone tanıttı"]
-    assert normalizer.get_params() == {"remove_stopwords": True, "remove_numbers": True}
+    assert normalizer.get_params() == {
+        "remove_stopwords": True,
+        "remove_numbers": True,
+        "max_chars": None,
+    }
+
+
+def test_badly_lowercased_dotted_i_is_repaired() -> None:
+    # "İçecek".lower() Python'da "i̇çecek" (i + U+0307) üretir; kelime bölünmemeli.
+    assert normalize_text("İçecek sanayi".lower()) == "içecek sanayi"
+
+
+def test_max_chars_truncates_before_normalization() -> None:
+    normalizer = TurkishTextNormalizer(max_chars=14)
+    assert normalizer.transform(["Ekonomi haberi ve devamı çok uzun"]) == ["ekonomi haberi"]
+    assert normalizer.transform([None]) == [""]
+
+
+def test_models_pickled_before_max_chars_still_work() -> None:
+    legacy = TurkishTextNormalizer()
+    del legacy.max_chars  # v1.0 nesnelerinde bu öznitelik yoktu
+    assert legacy.transform(["Borsa yükseldi"]) == ["borsa yükseldi"]

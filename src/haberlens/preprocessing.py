@@ -46,6 +46,7 @@ _APOSTROPHE_SUFFIX_RE = re.compile(r"(\w)['’`´]\w*")
 _NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)*")
 _NON_WORD_RE = re.compile(r"[^\w\s]|_")
 _WHITESPACE_RE = re.compile(r"\s+")
+_COMBINING_DOT_ABOVE = "\u0307"
 
 
 def turkish_lower(text: str) -> str:
@@ -69,7 +70,7 @@ def normalize_text(
         1. Unicode NFC normalizasyonu ve HTML etiketlerinin temizlenmesi
         2. URL ve e-posta adreslerinin kaldırılması
         3. Kesme işaretli çekim eklerinin atılması (``Fed'in`` → ``fed``)
-        4. Türkçe kurallarıyla küçük harfe çevirme
+        4. Türkçe kurallarıyla küçük harfe çevirme (bozuk ``i̇`` biçimleri dahil)
         5. Sayıların ve noktalama işaretlerinin kaldırılması
         6. (İsteğe bağlı) Türkçe etkisiz sözcüklerin ayıklanması
 
@@ -84,7 +85,8 @@ def normalize_text(
     value = _URL_RE.sub(" ", value)
     value = _EMAIL_RE.sub(" ", value)
     value = _APOSTROPHE_SUFFIX_RE.sub(r"\1", value)
-    value = turkish_lower(value)
+    # Başka araçlarla yanlış küçültülmüş "İ" harfleri ("i" + U+0307) kelimeyi bölmesin.
+    value = turkish_lower(value).replace(_COMBINING_DOT_ABOVE, "")
     if remove_numbers:
         value = _NUMBER_RE.sub(" ", value)
     value = _NON_WORD_RE.sub(" ", value)
@@ -100,19 +102,32 @@ class TurkishTextNormalizer(BaseEstimator, TransformerMixin):
 
     Pipeline'ın içinde yer aldığı için kaydedilen model, kendi ön işleme
     mantığını da beraberinde taşır.
+
+    Args:
+        max_chars: Verilirse metnin yalnızca ilk ``max_chars`` karakteri kullanılır.
+            Haberlerde konu bilgisi büyük ölçüde başlık ve giriş paragrafındadır;
+            uzun metinlerin geri kalanı gürültü ve işlem maliyeti ekler.
     """
 
-    def __init__(self, remove_stopwords: bool = True, remove_numbers: bool = True) -> None:
+    def __init__(
+        self,
+        remove_stopwords: bool = True,
+        remove_numbers: bool = True,
+        max_chars: int | None = None,
+    ) -> None:
         self.remove_stopwords = remove_stopwords
         self.remove_numbers = remove_numbers
+        self.max_chars = max_chars
 
     def fit(self, X: Iterable[str], y: object = None) -> TurkishTextNormalizer:
         return self
 
     def transform(self, X: Iterable[str]) -> list[str]:
+        # v1.0 ile kaydedilmiş modellerde bu öznitelik yoktur.
+        limit = getattr(self, "max_chars", None)
         return [
             normalize_text(
-                text,
+                text if limit is None or not isinstance(text, str) else text[:limit],
                 remove_stopwords=self.remove_stopwords,
                 remove_numbers=self.remove_numbers,
             )
