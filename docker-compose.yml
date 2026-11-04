@@ -1,0 +1,13 @@
+services:
+  haberlens:
+    build: .
+    image: haberlens:latest
+    container_name: haberlens
+    ports:
+      - "8000:8000"
+    environment:
+      # Üretimde güçlü bir anahtar belirleyin: `openssl rand -hex 32`
+      HABERLENS_API_KEY: ${HABERLENS_API_KEY:-}
+      HABERLENS_CORS_ORIGINS: ${HABERLENS_CORS_ORIGINS:-}
+      HABERLENS_MAX_BATCH_SIZE: ${HABERLENS_MAX_BATCH_SIZE:-256}
+    restart: unless-stopped
