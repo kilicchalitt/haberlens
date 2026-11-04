@@ -72,7 +72,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "RUF"]
-ignore = ["RUF001", "RUF002", "RUF003"]  # Türkçe karakterler bilinçli olarak kullanılıyor
+ignore = [
+  "RUF001", "RUF002", "RUF003",  # Türkçe karakterler bilinçli olarak kullanılıyor
+  "SIM905",                       # uzun sözcük listeleri için str.split() daha okunaklı
+]
 
 [tool.ruff.lint.per-file-ignores]
 "src/haberlens/api/app.py" = ["B008"]  # FastAPI Depends() kalıbı
