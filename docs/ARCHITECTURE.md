@@ -73,10 +73,12 @@ tek başına her iki yöntemden de daha iyi olduğunu gösterir.
 
 ### Neden BERT varsayılan değil?
 
-Dondurulmuş BERT gömmeleri bu veri setinde TF-IDF tabanlı hibrit modelin gerisinde
-kalmaktadır (bkz. benchmark). Üstelik ~400 MB model, PyTorch bağımlılığı ve yüzlerce kat
-daha yavaş çıkarım gerektirir. BERT'in ince ayarlanması (fine-tuning) yol haritasında
-yer almaktadır.
+Hibrit model bu veri setinde %98,4 makro F1'e ulaşırken ~4,5 MB boyutunda ve CPU'da
+milisaniyeler içinde çalışır. BERT tabanlı bir model ise ~400 MB ağırlık, PyTorch
+bağımlılığı ve çok daha yüksek çıkarım maliyeti getirir; kalan ~%1,5'lik hata payı için
+bu maliyet çoğu kurum için gerekçelendirilemez. Dondurulmuş BERT gömmeleri
+`haberlens benchmark --include-embeddings` ile aynı koşullarda karşılaştırılabilir;
+BERT'in ince ayarlanması (fine-tuning) ve ONNX ile hızlandırılması yol haritasında yer almaktadır.
 
 ## Model dosyası biçimi
 
